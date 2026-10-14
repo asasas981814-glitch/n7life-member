@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N7LiFe 官方後台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 密碼登入驗證遮罩 -->
+    <div id="login-box" class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+        <div class="w-12 h-12 bg-rose-600 rounded-2xl mx-auto flex items-center justify-center text-white text-xl font-bold shadow-md mb-3">🛡️</div>
+        <h3 class="text-lg font-bold text-slate-800 text-center mb-1">官方管理員驗證</h3>
+        <p class="text-xs text-slate-400 text-center mb-5">請輸入您的專屬管理密碼以解鎖後台</p>
+        <input type="password" id="admin-pwd" placeholder="請輸入管理密碼 (預設: admin888)" class="w-full px-4 py-3 bg-slate-50 border rounded-2xl mb-4 text-sm outline-none focus:ring-2 focus:ring-rose-500">
+        <button onclick="verifyPassword()" class="w-full bg-rose-600 text-white py-3 rounded-2xl text-sm font-bold shadow-lg hover:bg-rose-700 transition">解鎖管理後台</button>
+    </div>
+
+    <!-- 官方管理主介面 -->
+    <div id="admin-panel" class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden flex flex-col min-h-[85vh] hidden">
+        <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+            <div>
+                <span class="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">官方管理後台</span>
+                <h2 class="text-base font-bold mt-1">N7LiFe 管理系統</h2>
+            </div>
+            <button onclick="lockAdmin()" class="bg-slate-800 text-xs px-3 py-1.5 rounded-xl hover:bg-slate-700 transition">登出鎖定</button>
+        </div>
+
+        <div class="flex-1 p-4 overflow-y-auto space-y-5 bg-slate-50">
+            
+            <!-- 已註冊會員總清單 -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-800">📋 已註冊會員總清單</h3>
+                    <span id="member-count-badge" class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">共 0 人</span>
+                </div>
+                <div id="member-list-container" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- 賞品出貨狀態管理 (NEW) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-2">📦 會員賞品與出貨管理</h3>
+                <p class="text-[11px] text-slate-400 mb-3">點擊按鈕可直接切換賞品狀態（未出貨 ⇄ 已寄送）</p>
+                <div id="admin-prizes-container" class="space-y-2 max-h-44 overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- 1. 會員錢包加扣款 -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-3">1. 會員錢包加扣款</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-slate-500 font-medium">選擇會員</label>
+                        <select id="admin-target-phone" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-slate-500 font-medium">金額 (+加款 / -扣款)</label>
+                            <input type="number" id="admin-amount" placeholder="500 或 -200" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-500 font-medium">異動說明</label>
+                            <input type="text" id="admin-reason" placeholder="例如: 活動贈點" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                        </div>
+                    </div>
+                    <button onclick="adminAdjustWallet()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition">確認執行加扣款</button>
+                </div>
+            </div>
+
+            <!-- 2. 發放賞品 -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-3">2. 發放賞品至會員賞品櫃</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-slate-500 font-medium">發放對象會員</label>
+                        <select id="admin-prize-phone" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 font-medium">賞品名稱</label>
+                        <input type="text" id="admin-prize-name" placeholder="例如: SP賞 - 終極限定公仔" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                    </div>
+                    <button onclick="adminIssuePrize()" class="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">直接發放賞品</button>
+                </div>
+            </div>
+
+            <!-- 3. 集點卡加點 -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-3">3. 會員集點卡加點</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-slate-500 font-medium">選擇會員</label>
+                        <select id="admin-point-phone" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 font-medium">調整點數 (+1 或 -1)</label>
+                        <input type="number" id="admin-point-val" value="1" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                    </div>
+                    <button onclick="adminAdjustPoints()" class="w-full bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-amber-700 transition">調整集點卡點數</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let db = {
+            users: JSON.parse(localStorage.getItem('sys_users')) || [],
+            wallets: JSON.parse(localStorage.getItem('sys_wallets')) || {},
+            prizes: JSON.parse(localStorage.getItem('sys_prizes')) || {},
+            coupons: JSON.parse(localStorage.getItem('sys_coupons')) || {}
+        };
+
+        function reloadDB() {
+            db.users = JSON.parse(localStorage.getItem('sys_users')) || [];
+            db.wallets = JSON.parse(localStorage.getItem('sys_wallets')) || {};
+            db.prizes = JSON.parse(localStorage.getItem('sys_prizes')) || {};
+            db.coupons = JSON.parse(localStorage.getItem('sys_coupons')) || {};
+        }
+
+        function saveDB() {
+            localStorage.setItem('sys_users', JSON.stringify(db.users));
+            localStorage.setItem('sys_wallets', JSON.stringify(db.wallets));
+            localStorage.setItem('sys_prizes', JSON.stringify(db.prizes));
+            localStorage.setItem('sys_coupons', JSON.stringify(db.coupons));
+        }
+
+        function verifyPassword() {
+            const pwd = document.getElementById('admin-pwd').value;
+            if (pwd === 'admin888') {
+                document.getElementById('login-box').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                loadAdminData();
+            } else {
+                alert('管理密碼錯誤！');
+            }
+        }
+
+        function lockAdmin() {
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('login-box').classList.remove('hidden');
+            document.getElementById('admin-pwd').value = '';
+        }
+
+        function loadAdminData() {
+            reloadDB();
+            
+            // 1. 會員清單列表
+            const memberListContainer = document.getElementById('member-list-container');
+            document.getElementById('member-count-badge').innerText = `共 ${db.users.length} 人`;
+            
+            if (db.users.length === 0) {
+                memberListContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">目前尚無會員註冊</p>`;
+            } else {
+                memberListContainer.innerHTML = db.users.map(u => `
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
+                        <div>
+                            <div class="font-bold text-slate-800">${u.name} <span class="text-slate-500 font-normal">(${u.phone})</span></div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">密碼: <span class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-mono">${u.pwd}</span></div>
+                        </div>
+                        <div class="text-right text-[11px]">
+                            <div class="text-indigo-600 font-bold">$${u.balance.toLocaleString()}</div>
+                            <div class="text-amber-600">${u.points}點</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 2. 賞品出貨狀態管理列表
+            const prizesContainer = document.getElementById('admin-prizes-container');
+            let allPrizesHtml = '';
+            let hasAnyPrize = false;
+
+            db.users.forEach(u => {
+                const userPrizes = db.prizes[u.phone] || [];
+                userPrizes.forEach((p, pIdx) => {
+                    hasAnyPrize = true;
+                    const isShipped = p.status === 'shipping' || p.status === 'shipped';
+                    allPrizesHtml += `
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
+                            <div>
+                                <div class="font-bold text-slate-800">${p.name}</div>
+                                <div class="text-[10px] text-slate-500">擁有者: ${u.name} (${u.phone})</div>
+                            </div>
+                            <div>
+                                <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] transition ${isShipped ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}">
+                                    ${isShipped ? '📦 已寄送 (點擊改未出貨)' : '⏳ 未出貨 (點擊改已寄送)'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            prizesContainer.innerHTML = hasAnyPrize ? allPrizesHtml : `<p class="text-xs text-slate-400 text-center py-4">目前所有會員的賞品櫃皆無賞品</p>`;
+
+            // 3. 下拉選單
+            const optionsHtml = db.users.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
+            document.getElementById('admin-target-phone').innerHTML = optionsHtml;
+            document.getElementById('admin-prize-phone').innerHTML = optionsHtml;
+            document.getElementById('admin-point-phone').innerHTML = optionsHtml;
+        }
+
+        // 切換賞品出貨狀態
+        function togglePrizeStatus(phone, prizeIdx) {
+            reloadDB();
+            if (db.prizes[phone] && db.prizes[phone][prizeIdx]) {
+                const currentStatus = db.prizes[phone][prizeIdx].status;
+                // 切換狀態
+                db.prizes[phone][prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped') ? 'normal' : 'shipped';
+                saveDB();
+                loadAdminData();
+            }
+        }
+
+        function adminAdjustWallet() {
+            reloadDB();
+            const phone = document.getElementById('admin-target-phone').value;
+            const amount = parseInt(document.getElementById('admin-amount').value);
+            const reason = document.getElementById('admin-reason').value.trim() || '官方手動調整';
+
+            if (isNaN(amount)) {
+                alert('請輸入有效的金額！');
+                return;
+            }
+
+            const user = db.users.find(u => u.phone === phone);
+            if (!user) return;
+
+            user.balance += amount;
+            if (!db.wallets[phone]) db.wallets[phone] = [];
+            db.wallets[phone].push({
+                type: amount >= 0 ? 'topup' : 'spend',
+                amount: amount,
+                desc: reason,
+                time: new Date().toLocaleString()
+            });
+
+            saveDB();
+            loadAdminData();
+            alert(`已成功對會員 ${user.name} 執行加扣款 NT$ ${amount}！`);
+        }
+
+        function adminIssuePrize() {
+            reloadDB();
+            const phone = document.getElementById('admin-prize-phone').value;
+            const prizeName = document.getElementById('admin-prize-name').value.trim();
+
+            if (!prizeName) {
+                alert('請輸入賞品名稱！');
+                return;
+            }
+
+            if (!db.prizes[phone]) db.prizes[phone] = [];
+            db.prizes[phone].push({
+                id: Date.now(),
+                name: prizeName,
+                status: 'normal', // 預設為未出貨
+                time: new Date().toLocaleDateString()
+            });
+
+            saveDB();
+            loadAdminData();
+            alert('賞品已成功發放至該會員的賞品櫃！');
+        }
+
+        function adminAdjustPoints() {
+            reloadDB();
+            const phone = document.getElementById('admin-point-phone').value;
+            const val = parseInt(document.getElementById('admin-point-val').value);
+
+            if (isNaN(val)) return;
+            const user = db.users.find(u => u.phone === phone);
+            if (!user) return;
+
+            user.points = Math.max(0, user.points + val);
+            saveDB();
+            loadAdminData();
+            alert(`會員集點卡已成功調整，目前點數：${user.points} 點`);
+        }
+    </script>
+</body>
+</html>
