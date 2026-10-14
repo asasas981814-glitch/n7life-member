@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>N7LiFe 官方後台</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; }
-    </style>
+    <style>body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; }</style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
 
@@ -26,7 +25,7 @@
         <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
             <div>
                 <span class="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">官方管理後台</span>
-                <h2 class="text-base font-bold mt-1">N7LiFe 管理系統</h2>
+                <h2 class="text-base font-bold mt-1">N7LiFe 管理系統 (雲端同步)</h2>
             </div>
             <button onclick="lockAdmin()" class="bg-slate-800 text-xs px-3 py-1.5 rounded-xl hover:bg-slate-700 transition">登出鎖定</button>
         </div>
@@ -106,68 +105,30 @@
     </div>
 
     <script>
-        let db = {
-            users: JSON.parse(localStorage.getItem('sys_users')) || [],
-            wallets: JSON.parse(localStorage.getItem('sys_wallets')) || {},
-            prizes: JSON.parse(localStorage.getItem('sys_prizes')) || {},
-            coupons: JSON.parse(localStorage.getItem('sys_coupons')) || {}
-        };
+        // Supabase 雲端設定
+        const SUPABASE_URL = 'https://sanuaxbkzuvpgrfddodb.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_9sgAfywutJsCQqyQWu9Thw_fL7WlEph';
 
-        function reloadDB() {
-            db.users = JSON.parse(localStorage.getItem('sys_users')) || [];
-            db.wallets = JSON.parse(localStorage.getItem('sys_wallets')) || {};
-            db.prizes = JSON.parse(localStorage.getItem('sys_prizes')) || {};
-            db.coupons = JSON.parse(localStorage.getItem('sys_coupons')) || {};
-        }
+        const { createClient } = supabase;
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function saveDB() {
-            localStorage.setItem('sys_users', JSON.stringify(db.users));
-            localStorage.setItem('sys_wallets', JSON.stringify(db.wallets));
-            localStorage.setItem('sys_prizes', JSON.stringify(db.prizes));
-            localStorage.setItem('sys_coupons', JSON.stringify(db.coupons));
-        }
+        let allMembers = [];
 
-        // 頁面初始化：檢查是否保持後台登入
-        function initAdminState() {
-            const isUnlocked = localStorage.getItem('sys_admin_unlocked') === 'true';
-            if (isUnlocked) {
-                document.getElementById('login-box').classList.add('hidden');
-                document.getElementById('admin-panel').classList.remove('hidden');
-                loadAdminData();
+        async function loadAdminData() {
+            const { data, error } = await _supabase.from('members').select('*');
+            if (error) {
+                alert('無法載入雲端資料');
+                return;
             }
-        }
+            allMembers = data || [];
 
-        function verifyPassword() {
-            const pwd = document.getElementById('admin-pwd').value;
-            // 管理密碼（需要修改請在此調整）
-            if (pwd === 'admin888') {
-                localStorage.setItem('sys_admin_unlocked', 'true');
-                document.getElementById('login-box').classList.add('hidden');
-                document.getElementById('admin-panel').classList.remove('hidden');
-                loadAdminData();
-            } else {
-                alert('管理密碼錯誤！');
-            }
-        }
-
-        function lockAdmin() {
-            localStorage.removeItem('sys_admin_unlocked');
-            document.getElementById('admin-panel').classList.add('hidden');
-            document.getElementById('login-box').classList.remove('hidden');
-            document.getElementById('admin-pwd').value = '';
-        }
-
-        function loadAdminData() {
-            reloadDB();
-            
-            // 1. 會員清單列表
             const memberListContainer = document.getElementById('member-list-container');
-            document.getElementById('member-count-badge').innerText = `共 ${db.users.length} 人`;
+            document.getElementById('member-count-badge').innerText = `共 ${allMembers.length} 人`;
             
-            if (db.users.length === 0) {
+            if (allMembers.length === 0) {
                 memberListContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">目前尚無會員註冊</p>`;
             } else {
-                memberListContainer.innerHTML = db.users.map(u => `
+                memberListContainer.innerHTML = allMembers.map(u => `
                     <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
                         <div>
                             <div class="font-bold text-slate-800">${u.name} <span class="text-slate-500 font-normal">(${u.phone})</span></div>
@@ -181,13 +142,12 @@
                 `).join('');
             }
 
-            // 2. 賞品出貨狀態管理列表
             const prizesContainer = document.getElementById('admin-prizes-container');
             let allPrizesHtml = '';
             let hasAnyPrize = false;
 
-            db.users.forEach(u => {
-                const userPrizes = db.prizes[u.phone] || [];
+            allMembers.forEach(u => {
+                const userPrizes = u.prizes || [];
                 userPrizes.forEach((p, pIdx) => {
                     hasAnyPrize = true;
                     const isShipped = p.status === 'shipping' || p.status === 'shipped';
@@ -198,103 +158,106 @@
                                 <div class="text-[10px] text-slate-500">擁有者: ${u.name} (${u.phone})</div>
                             </div>
                             <div>
-                                <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] transition ${isShipped ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}">
-                                    ${isShipped ? '📦 已寄送 (點擊改未出貨)' : '⏳ 未出貨 (點擊改已寄送)'}
+                                <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] transition ${isShipped ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                    ${isShipped ? '📦 已寄送' : '⏳ 未出貨'}
                                 </button>
                             </div>
                         </div>
                     `;
                 });
             });
+            prizesContainer.innerHTML = hasAnyPrize ? allPrizesHtml : `<p class="text-xs text-slate-400 text-center py-4">目前無任何賞品</p>`;
 
-            prizesContainer.innerHTML = hasAnyPrize ? allPrizesHtml : `<p class="text-xs text-slate-400 text-center py-4">目前所有會員的賞品櫃皆無賞品</p>`;
-
-            // 3. 下拉選單
-            const optionsHtml = db.users.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
+            const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
             document.getElementById('admin-target-phone').innerHTML = optionsHtml;
             document.getElementById('admin-prize-phone').innerHTML = optionsHtml;
             document.getElementById('admin-point-phone').innerHTML = optionsHtml;
         }
 
-        // 切換賞品出貨狀態
-        function togglePrizeStatus(phone, prizeIdx) {
-            reloadDB();
-            if (db.prizes[phone] && db.prizes[phone][prizeIdx]) {
-                const currentStatus = db.prizes[phone][prizeIdx].status;
-                db.prizes[phone][prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped') ? 'normal' : 'shipped';
-                saveDB();
-                loadAdminData();
+        async function verifyPassword() {
+            const pwd = document.getElementById('admin-pwd').value;
+            if (pwd === 'admin888') {
+                localStorage.setItem('sys_admin_unlocked', 'true');
+                document.getElementById('login-box').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                await loadAdminData();
+            } else {
+                alert('管理密碼錯誤！');
             }
         }
 
-        function adminAdjustWallet() {
-            reloadDB();
+        function lockAdmin() {
+            localStorage.removeItem('sys_admin_unlocked');
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('login-box').classList.remove('hidden');
+            document.getElementById('admin-pwd').value = '';
+        }
+
+        async function adminAdjustWallet() {
             const phone = document.getElementById('admin-target-phone').value;
             const amount = parseInt(document.getElementById('admin-amount').value);
             const reason = document.getElementById('admin-reason').value.trim() || '官方手動調整';
 
-            if (isNaN(amount)) {
-                alert('請輸入有效的金額！');
-                return;
-            }
+            if (isNaN(amount)) { alert('請輸入有效金額'); return; }
 
-            const user = db.users.find(u => u.phone === phone);
+            const user = allMembers.find(u => u.phone === phone);
             if (!user) return;
 
             user.balance += amount;
-            if (!db.wallets[phone]) db.wallets[phone] = [];
-            db.wallets[phone].push({
-                type: amount >= 0 ? 'topup' : 'spend',
-                amount: amount,
-                desc: reason,
-                time: new Date().toLocaleString()
-            });
+            if (!user.wallets) user.wallets = [];
+            user.wallets.push({ type: amount >= 0 ? 'topup' : 'spend', amount, desc: reason, time: new Date().toLocaleString() });
 
-            saveDB();
-            loadAdminData();
-            alert(`已成功對會員 ${user.name} 執行加扣款 NT$ ${amount}！`);
+            await _supabase.from('members').update({ balance: user.balance, wallets: user.wallets }).eq('phone', phone);
+            await loadAdminData();
+            alert('加扣款成功！');
         }
 
-        function adminIssuePrize() {
-            reloadDB();
+        async function adminIssuePrize() {
             const phone = document.getElementById('admin-prize-phone').value;
             const prizeName = document.getElementById('admin-prize-name').value.trim();
+            if (!prizeName) { alert('請輸入賞品名稱'); return; }
 
-            if (!prizeName) {
-                alert('請輸入賞品名稱！');
-                return;
-            }
+            const user = allMembers.find(u => u.phone === phone);
+            if (!user) return;
 
-            if (!db.prizes[phone]) db.prizes[phone] = [];
-            db.prizes[phone].push({
-                id: Date.now(),
-                name: prizeName,
-                status: 'normal',
-                time: new Date().toLocaleDateString()
-            });
+            if (!user.prizes) user.prizes = [];
+            user.prizes.push({ id: Date.now(), name: prizeName, status: 'normal', time: new Date().toLocaleDateString() });
 
-            saveDB();
-            loadAdminData();
-            alert('賞品已成功發放至該會員的賞品櫃！');
+            await _supabase.from('members').update({ prizes: user.prizes }).eq('phone', phone);
+            await loadAdminData();
+            alert('賞品已發放！');
         }
 
-        function adminAdjustPoints() {
-            reloadDB();
+        async function adminAdjustPoints() {
             const phone = document.getElementById('admin-point-phone').value;
             const val = parseInt(document.getElementById('admin-point-val').value);
-
             if (isNaN(val)) return;
-            const user = db.users.find(u => u.phone === phone);
+
+            const user = allMembers.find(u => u.phone === phone);
             if (!user) return;
 
             user.points = Math.max(0, user.points + val);
-            saveDB();
-            loadAdminData();
-            alert(`會員集點卡已成功調整，目前點數：${user.points} 點`);
+            await _supabase.from('members').update({ points: user.points }).eq('phone', phone);
+            await loadAdminData();
+            alert('點數調整成功！');
         }
 
-        // 初始化
-        initAdminState();
+        async function togglePrizeStatus(phone, prizeIdx) {
+            const user = allMembers.find(u => u.phone === phone);
+            if (!user || !user.prizes[prizeIdx]) return;
+
+            const currentStatus = user.prizes[prizeIdx].status;
+            user.prizes[prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped') ? 'normal' : 'shipped';
+
+            await _supabase.from('members').update({ prizes: user.prizes }).eq('phone', phone);
+            await loadAdminData();
+        }
+
+        if (localStorage.getItem('sys_admin_unlocked') === 'true') {
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            loadAdminData();
+        }
     </script>
 </body>
 </html>
