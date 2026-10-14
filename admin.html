@@ -17,7 +17,7 @@
         <div class="w-12 h-12 bg-rose-600 rounded-2xl mx-auto flex items-center justify-center text-white text-xl font-bold shadow-md mb-3">🛡️</div>
         <h3 class="text-lg font-bold text-slate-800 text-center mb-1">官方管理員驗證</h3>
         <p class="text-xs text-slate-400 text-center mb-5">請輸入您的專屬管理密碼以解鎖後台</p>
-        <input type="password" id="admin-pwd" placeholder="請輸入管理密碼 (預設: admin888)" class="w-full px-4 py-3 bg-slate-50 border rounded-2xl mb-4 text-sm outline-none focus:ring-2 focus:ring-rose-500">
+        <input type="password" id="admin-pwd" placeholder="請輸入管理密碼" class="w-full px-4 py-3 bg-slate-50 border rounded-2xl mb-4 text-sm outline-none focus:ring-2 focus:ring-rose-500">
         <button onclick="verifyPassword()" class="w-full bg-rose-600 text-white py-3 rounded-2xl text-sm font-bold shadow-lg hover:bg-rose-700 transition">解鎖管理後台</button>
     </div>
 
@@ -42,7 +42,7 @@
                 <div id="member-list-container" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
             </div>
 
-            <!-- 賞品出貨狀態管理 (NEW) -->
+            <!-- 賞品出貨狀態管理 -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 class="text-sm font-bold text-slate-800 mb-2">📦 會員賞品與出貨管理</h3>
                 <p class="text-[11px] text-slate-400 mb-3">點擊按鈕可直接切換賞品狀態（未出貨 ⇄ 已寄送）</p>
@@ -127,9 +127,21 @@
             localStorage.setItem('sys_coupons', JSON.stringify(db.coupons));
         }
 
+        // 頁面初始化：檢查是否保持後台登入
+        function initAdminState() {
+            const isUnlocked = localStorage.getItem('sys_admin_unlocked') === 'true';
+            if (isUnlocked) {
+                document.getElementById('login-box').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                loadAdminData();
+            }
+        }
+
         function verifyPassword() {
             const pwd = document.getElementById('admin-pwd').value;
-            if (pwd === 'n70913') {
+            // 管理密碼（需要修改請在此調整）
+            if (pwd === 'admin888') {
+                localStorage.setItem('sys_admin_unlocked', 'true');
                 document.getElementById('login-box').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 loadAdminData();
@@ -139,6 +151,7 @@
         }
 
         function lockAdmin() {
+            localStorage.removeItem('sys_admin_unlocked');
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('login-box').classList.remove('hidden');
             document.getElementById('admin-pwd').value = '';
@@ -208,7 +221,6 @@
             reloadDB();
             if (db.prizes[phone] && db.prizes[phone][prizeIdx]) {
                 const currentStatus = db.prizes[phone][prizeIdx].status;
-                // 切換狀態
                 db.prizes[phone][prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped') ? 'normal' : 'shipped';
                 saveDB();
                 loadAdminData();
@@ -257,7 +269,7 @@
             db.prizes[phone].push({
                 id: Date.now(),
                 name: prizeName,
-                status: 'normal', // 預設為未出貨
+                status: 'normal',
                 time: new Date().toLocaleDateString()
             });
 
@@ -280,6 +292,9 @@
             loadAdminData();
             alert(`會員集點卡已成功調整，目前點數：${user.points} 點`);
         }
+
+        // 初始化
+        initAdminState();
     </script>
 </body>
 </html>
