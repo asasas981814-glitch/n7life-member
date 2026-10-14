@@ -64,7 +64,6 @@
     </div>
 
     <script>
-        // Supabase 雲端設定
         const SUPABASE_URL = 'https://sanuaxbkzuvpgrfddodb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_9sgAfywutJsCQqyQWu9Thw_fL7WlEph';
         
@@ -136,11 +135,11 @@
                             </h2>
                             <div class="space-y-3 mb-5">
                                 <div>
-                                    <label class="text-xs font-medium text-indigo-200/80">真實姓名</label>
+                                    <label class="text-xs font-medium text-indigo-200/80">真實姓名 (允許同名)</label>
                                     <input type="text" id="reg-name" placeholder="請輸入真實姓名" class="w-full mt-1 px-4 py-2.5 glass-input rounded-xl text-sm outline-none transition">
                                 </div>
                                 <div>
-                                    <label class="text-xs font-medium text-indigo-200/80">手機號碼</label>
+                                    <label class="text-xs font-medium text-indigo-200/80">手機號碼 (唯一帳號)</label>
                                     <input type="tel" id="reg-phone" placeholder="09xxxxxxxx" class="w-full mt-1 px-4 py-2.5 glass-input rounded-xl text-sm outline-none transition">
                                 </div>
                                 <div>
@@ -192,9 +191,15 @@
                 return;
             }
 
-            const { data: existing } = await _supabase.from('members').select('phone').eq('phone', phone).single();
+            // 嚴格檢查手機號碼是否已被註冊
+            const { data: existing, error: checkError } = await _supabase
+                .from('members')
+                .select('phone')
+                .eq('phone', phone)
+                .maybeSingle();
+
             if (existing) {
-                alert('此手機號碼已經註冊過！');
+                alert('此手機號碼已經註冊過，一個手機號碼只能註冊一個帳號！');
                 return;
             }
 
