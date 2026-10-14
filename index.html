@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>N7LiFe 會員專屬服務系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body { 
@@ -13,12 +14,8 @@
             color: #f8fafc;
             overflow-x: hidden;
         }
-
-        /* 夢幻極光流動背景 */
         .aurora-bg {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 0;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 0;
             background: radial-gradient(circle at 20% 20%, rgba(147, 51, 234, 0.35), transparent 45%),
                         radial-gradient(circle at 80% 30%, rgba(59, 130, 246, 0.35), transparent 45%),
                         radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.3), transparent 50%),
@@ -26,102 +23,79 @@
             filter: blur(60px);
             animation: auroraAnimation 12s ease-in-out infinite alternate;
         }
-
         @keyframes auroraAnimation {
             0% { transform: scale(1) rotate(0deg); }
             50% { transform: scale(1.1) rotate(3deg); }
             100% { transform: scale(1.05) rotate(-3deg); }
         }
-
-        /* 磨砂玻璃擬態卡片 */
         .glass-card {
             background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
-                        inset 0 1px 1px rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
         }
-
         .glass-input {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.15);
             color: #ffffff;
-            backdrop-filter: blur(10px);
         }
         .glass-input:focus {
             background: rgba(255, 255, 255, 0.1);
             border-color: #a855f7;
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
         }
-
-        /* 霓虹夢幻漸層按鈕 */
         .btn-neon {
             background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #ec4899 100%);
             box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
             transition: all 0.3s ease;
         }
-        .btn-neon:hover {
-            box-shadow: 0 0 30px rgba(236, 72, 153, 0.6);
-            transform: translateY(-1px);
-        }
-
-        /* 文字科技霓虹光影 */
-        .neon-text-purple {
-            text-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
-        }
-        .neon-text-cyan {
-            text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
-        }
+        .neon-text-purple { text-shadow: 0 0 12px rgba(168, 85, 247, 0.6); }
+        .neon-text-cyan { text-shadow: 0 0 12px rgba(56, 189, 248, 0.6); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-start py-6 px-3 relative">
 
-    <!-- 背景夢幻極光 -->
     <div class="aurora-bg"></div>
 
-    <!-- 手機外框容器 -->
     <div id="app-container" class="w-full max-w-md glass-card rounded-3xl overflow-hidden flex flex-col min-h-[88vh] relative z-10">
-        <!-- 動態渲染區域 -->
         <div id="main-view" class="flex-1 flex flex-col">
-            <div class="flex-1 flex items-center justify-center p-8 text-indigo-200/60">載入中...</div>
+            <div class="flex-1 flex items-center justify-center p-8 text-indigo-200/60">連接雲端資料庫中...</div>
         </div>
     </div>
 
     <script>
-        let db = {
-            users: JSON.parse(localStorage.getItem('sys_users')) || [],
-            wallets: JSON.parse(localStorage.getItem('sys_wallets')) || {},
-            prizes: JSON.parse(localStorage.getItem('sys_prizes')) || {},
-            coupons: JSON.parse(localStorage.getItem('sys_coupons')) || {}
-        };
+        // Supabase 雲端設定
+        const SUPABASE_URL = 'https://sanuaxbkzuvpgrfddodb.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_9sgAfywutJsCQqyQWu9Thw_fL7WlEph';
+        
+        const { createClient } = supabase;
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // 保持登入狀態
         let currentUserPhone = localStorage.getItem('sys_current_user') || null;
+        let currentMemberData = null;
 
-        function saveData() {
-            localStorage.setItem('sys_users', JSON.stringify(db.users));
-            localStorage.setItem('sys_wallets', JSON.stringify(db.wallets));
-            localStorage.setItem('sys_prizes', JSON.stringify(db.prizes));
-            localStorage.setItem('sys_coupons', JSON.stringify(db.coupons));
-            if (currentUserPhone) {
-                localStorage.setItem('sys_current_user', currentUserPhone);
+        async function loadUserData() {
+            if (!currentUserPhone) return;
+            const { data, error } = await _supabase
+                .from('members')
+                .select('*')
+                .eq('phone', currentUserPhone)
+                .single();
+            
+            if (data) {
+                currentMemberData = data;
             } else {
+                currentUserPhone = null;
                 localStorage.removeItem('sys_current_user');
             }
         }
 
-        function syncDB() {
-            db.users = JSON.parse(localStorage.getItem('sys_users')) || [];
-            db.wallets = JSON.parse(localStorage.getItem('sys_wallets')) || {};
-            db.prizes = JSON.parse(localStorage.getItem('sys_prizes')) || {};
-            db.coupons = JSON.parse(localStorage.getItem('sys_coupons')) || {};
-        }
-
-        function render() {
-            syncDB();
-            const view = document.getElementById('main-view');
+        async function render() {
             if (currentUserPhone) {
+                await loadUserData();
+            }
+            const view = document.getElementById('main-view');
+            if (currentUserPhone && currentMemberData) {
                 view.innerHTML = renderMemberDashboard();
             } else {
                 view.innerHTML = renderAuthView();
@@ -153,7 +127,7 @@
                                 </div>
                             </div>
                             <button onclick="handleLogin()" class="w-full btn-neon text-white py-3 rounded-xl font-medium text-sm transition">登入系統</button>
-                            <p class="text-center text-xs text-indigo-200/60 mt-4">還沒有帳號？ <button onclick="switchAuthMode('register')" class="text-pink-400 hover:text-pink-300 font-medium">立即註冊</button></p>
+                            <p class="text-center text-xs text-indigo-200/60 mt-4">還沒有帳號？ <button onclick="switchAuthMode('register')" class="text-pink-400 font-medium">立即註冊</button></p>
                         </div>
 
                         <div id="register-form" class="hidden">
@@ -175,7 +149,7 @@
                                 </div>
                             </div>
                             <button onclick="handleRegister()" class="w-full btn-neon text-white py-3 rounded-xl font-medium text-sm transition">完成註冊並登入</button>
-                            <p class="text-center text-xs text-indigo-200/60 mt-4">已經有帳號了？ <button onclick="switchAuthMode('login')" class="text-purple-400 hover:text-purple-300 font-medium">返回登入</button></p>
+                            <p class="text-center text-xs text-indigo-200/60 mt-4">已經有帳號了？ <button onclick="switchAuthMode('login')" class="text-purple-400 font-medium">返回登入</button></p>
                         </div>
                     </div>
                 </div>
@@ -183,31 +157,32 @@
         }
 
         function switchAuthMode(mode) {
-            const loginForm = document.getElementById('login-form');
-            const regForm = document.getElementById('register-form');
-            if (mode === 'register') {
-                loginForm.classList.add('hidden');
-                regForm.classList.remove('hidden');
-            } else {
-                regForm.classList.add('hidden');
-                loginForm.classList.remove('hidden');
-            }
+            document.getElementById('login-form').classList.toggle('hidden', mode === 'register');
+            document.getElementById('register-form').classList.toggle('hidden', mode === 'login');
         }
 
-        function handleLogin() {
+        async function handleLogin() {
             const phone = document.getElementById('login-phone').value.trim();
             const pwd = document.getElementById('login-pwd').value.trim();
-            const user = db.users.find(u => u.phone === phone && u.pwd === pwd);
-            if (!user) {
-                alert('帳號或密碼錯誤，或無此帳號！');
+
+            const { data, error } = await _supabase
+                .from('members')
+                .select('*')
+                .eq('phone', phone)
+                .eq('pwd', pwd)
+                .single();
+
+            if (error || !data) {
+                alert('帳號或密碼錯誤！');
                 return;
             }
+
             currentUserPhone = phone;
-            saveData();
+            localStorage.setItem('sys_current_user', phone);
             render();
         }
 
-        function handleRegister() {
+        async function handleRegister() {
             const name = document.getElementById('reg-name').value.trim();
             const phone = document.getElementById('reg-phone').value.trim();
             const pwd = document.getElementById('reg-pwd').value.trim();
@@ -216,29 +191,43 @@
                 alert('請完整填寫所有欄位！');
                 return;
             }
-            if (db.users.some(u => u.phone === phone)) {
+
+            const { data: existing } = await _supabase.from('members').select('phone').eq('phone', phone).single();
+            if (existing) {
                 alert('此手機號碼已經註冊過！');
                 return;
             }
 
-            db.users.push({ phone, name, pwd, balance: 0, points: 0 });
-            db.wallets[phone] = [{ type: 'topup', amount: 0, desc: '註冊成功開戶', time: new Date().toLocaleString() }];
-            db.prizes[phone] = [];
-            db.coupons[phone] = [{ id: Date.now(), title: '新會員迎賓折價券', code: 'WELCOME', status: 'unused', expire: '2026-12-31' }];
-            
+            const newMember = {
+                phone: phone,
+                name: name,
+                pwd: pwd,
+                balance: 0,
+                points: 0,
+                wallets: [{ type: 'topup', amount: 0, desc: '註冊成功開戶', time: new Date().toLocaleString() }],
+                prizes: [],
+                coupons: [{ id: Date.now(), title: '新會員迎賓折價券', code: 'WELCOME', status: 'unused', expire: '2026-12-31' }]
+            };
+
+            const { error } = await _supabase.from('members').insert([newMember]);
+            if (error) {
+                alert('註冊失敗，請稍後再試');
+                return;
+            }
+
             currentUserPhone = phone;
-            saveData();
-            alert('註冊成功！已自動為您登入。');
+            localStorage.setItem('sys_current_user', phone);
+            alert('註冊成功！');
             render();
         }
 
         let activeTab = 'wallet';
 
         function renderMemberDashboard() {
-            const user = db.users.find(u => u.phone === currentUserPhone) || { name: '', balance: 0, points: 0 };
-            const wallets = db.wallets[currentUserPhone] || [];
-            const prizes = db.prizes[currentUserPhone] || [];
-            const coupons = db.coupons[currentUserPhone] || [];
+            const user = currentMemberData;
+            const wallets = user.wallets || [];
+            const prizes = user.prizes || [];
+            const coupons = user.coupons || [];
 
             return `
                 <div class="bg-gradient-to-r from-purple-900/60 via-indigo-900/60 to-slate-900/80 p-5 rounded-b-3xl border-b border-purple-500/20 shadow-lg">
@@ -251,10 +240,10 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 mt-4">
-                        <div class="bg-purple-950/40 p-3.5 rounded-2xl border border-purple-500/30 relative group">
+                        <div class="bg-purple-950/40 p-3.5 rounded-2xl border border-purple-500/30">
                             <div class="flex justify-between items-center">
                                 <span class="text-[11px] text-purple-300/80">錢包餘額</span>
-                                <button onclick="refreshBalance()" title="更新餘額" class="text-xs text-purple-300 hover:text-white transition transform active:rotate-180">🔄</button>
+                                <button onclick="refreshBalance()" title="更新餘額" class="text-xs text-purple-300 hover:text-white transition">🔄</button>
                             </div>
                             <div class="text-xl font-bold mt-0.5 text-purple-200 neon-text-purple">NT$ ${user.balance.toLocaleString()}</div>
                         </div>
@@ -279,9 +268,8 @@
             `;
         }
 
-        // 手動點擊更新餘額
-        function refreshBalance() {
-            render();
+        async function refreshBalance() {
+            await render();
         }
 
         function switchMemberTab(tab) {
@@ -291,7 +279,8 @@
 
         function handleLogout() {
             currentUserPhone = null;
-            saveData();
+            currentMemberData = null;
+            localStorage.removeItem('sys_current_user');
             render();
         }
 
@@ -302,7 +291,7 @@
                     <div class="space-y-2">
                         ${wallets.length === 0 ? '<p class="text-xs text-slate-500 text-center py-6">目前尚無交易紀錄</p>' : ''}
                         ${wallets.slice().reverse().map(w => `
-                            <div class="bg-white/5 p-3 rounded-2xl flex justify-between items-center border border-white/5 hover:border-purple-500/20 transition">
+                            <div class="bg-white/5 p-3 rounded-2xl flex justify-between items-center border border-white/5">
                                 <div>
                                     <div class="text-xs font-bold text-slate-200">${w.desc}</div>
                                     <div class="text-[10px] text-slate-400 mt-0.5">${w.time}</div>
@@ -351,11 +340,11 @@
                     <div class="bg-gradient-to-r from-purple-900/80 via-pink-900/80 to-indigo-900/80 text-white p-4 rounded-2xl border border-pink-500/30 shadow-lg">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-xs font-medium uppercase tracking-wider text-pink-200">VIP 專屬集點卡</span>
-                            <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/20">${points} / 10 點</span>
+                            <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full">${points} / 10 點</span>
                         </div>
                         <div class="grid grid-cols-5 gap-2 mt-3">
                             ${Array.from({length: 10}).map((_, i) => `
-                                <div class="h-9 rounded-xl flex items-center justify-center text-xs font-bold transition ${i < points ? 'bg-gradient-to-tr from-pink-500 to-purple-500 text-white shadow-md shadow-pink-500/30' : 'bg-black/30 text-slate-600 border border-white/5'}">
+                                <div class="h-9 rounded-xl flex items-center justify-center text-xs font-bold ${i < points ? 'bg-gradient-to-tr from-pink-500 to-purple-500 text-white shadow-md' : 'bg-black/30 text-slate-600'}">
                                     ${i < points ? '✦' : i + 1}
                                 </div>
                             `).join('')}
@@ -373,7 +362,7 @@
                                         <div class="text-[10px] text-slate-400 mt-0.5">代碼: ${c.code} \vert{} 期限: ${c.expire}</div>
                                     </div>
                                     <div>
-                                        ${c.status === 'unused' ? '<span class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-xl font-medium">未使用</span>' : '<span class="text-xs bg-white/10 text-slate-400 px-2.5 py-1 rounded-xl font-medium">已使用</span>'}
+                                        ${c.status === 'unused' ? '<span class="text-xs bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-xl font-medium">未使用</span>' : '<span class="text-xs bg-white/10 text-slate-400 px-2.5 py-1 rounded-xl font-medium">已使用</span>'}
                                     </div>
                                 </div>
                             `).join('')}
