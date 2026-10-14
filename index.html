@@ -63,6 +63,72 @@
         </div>
     </div>
 
+    <!-- 轉單物流填寫彈跳視窗 Modal -->
+    <div id="shipping-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-purple-500/30 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative">
+            <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2">
+                📦 填寫轉單寄送資訊
+            </h3>
+            <p id="modal-prize-title" class="text-xs text-purple-300 mb-4 font-medium"></p>
+            
+            <input type="hidden" id="modal-prize-index">
+
+            <div class="space-y-3 mb-5">
+                <div>
+                    <label class="text-xs font-medium text-indigo-200/80">選擇物流方式</label>
+                    <select id="shipping-method" onchange="handleShippingMethodChange()" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                        <option value="賣貨便" class="bg-slate-900">7-11 賣貨便</option>
+                        <option value="店到店" class="bg-slate-900">全家/萊爾富 店到店</option>
+                        <option value="宅配" class="bg-slate-900">黑貓/郵局 宅配</option>
+                    </select>
+                </div>
+
+                <!-- 賣貨便欄位 -->
+                <div id="field-c2c" class="shipping-fields">
+                    <label class="text-xs font-medium text-indigo-200/80">賣貨便取貨代碼 / 訂單編號</label>
+                    <input type="text" id="ship-c2c-code" placeholder="請輸入賣貨便單號" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                </div>
+
+                <!-- 店到店欄位 -->
+                <div id="field-store" class="shipping-fields hidden space-y-3">
+                    <div>
+                        <label class="text-xs font-medium text-indigo-200/80">收件人姓名</label>
+                        <input type="text" id="ship-store-name" placeholder="請輸入真實姓名" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-indigo-200/80">收件人手機電話</label>
+                        <input type="tel" id="ship-store-phone" placeholder="09xxxxxxxx" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-indigo-200/80">取貨超商門市名稱 / 店號</label>
+                        <input type="text" id="ship-store-branch" placeholder="例如: 全家 XXXXX店" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                    </div>
+                </div>
+
+                <!-- 宅配欄位 -->
+                <div id="field-home" class="shipping-fields hidden space-y-3">
+                    <div>
+                        <label class="text-xs font-medium text-indigo-200/80">收件人姓名</label>
+                        <input type="text" id="ship-home-name" placeholder="請輸入真實姓名" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-indigo-200/80">收件人手機電話</label>
+                        <input type="tel" id="ship-home-phone" placeholder="09xxxxxxxx" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-indigo-200/80">完整收件地址</label>
+                        <input type="text" id="ship-home-address" placeholder="請輸入縣市區及詳細地址" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closeShippingModal()" class="flex-1 bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-xl text-xs font-bold transition">取消</button>
+                <button onclick="submitShippingInfo()" class="flex-1 btn-neon text-white py-2.5 rounded-xl text-xs font-bold transition">確認送出轉單</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://sanuaxbkzuvpgrfddodb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_9sgAfywutJsCQqyQWu9Thw_fL7WlEph';
@@ -191,8 +257,7 @@
                 return;
             }
 
-            // 嚴格檢查手機號碼是否已被註冊
-            const { data: existing, error: checkError } = await _supabase
+            const { data: existing } = await _supabase
                 .from('members')
                 .select('phone')
                 .eq('phone', phone)
@@ -317,19 +382,37 @@
                     <h3 class="text-xs font-bold text-indigo-300/80 uppercase tracking-wider mb-3">我的賞品櫃</h3>
                     <div class="space-y-3">
                         ${prizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-6">您的賞品櫃目前空空如也</p>' : ''}
-                        ${prizes.map((p) => {
+                        ${prizes.map((p, idx) => {
                             const isShipped = p.status === 'shipping' || p.status === 'shipped';
+                            const hasShipping = !!p.shippingInfo;
                             return `
-                                <div class="bg-white/5 p-3.5 rounded-2xl border border-white/5 flex justify-between items-center">
-                                    <div>
-                                        <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium border border-purple-500/30">獲得賞品</span>
-                                        <div class="text-sm font-bold text-white mt-1.5">${p.name}</div>
-                                        <div class="text-[10px] text-slate-400 mt-0.5">獲得時間: ${p.time}</div>
+                                <div class="bg-white/5 p-3.5 rounded-2xl border border-white/5 flex flex-col gap-2.5">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium border border-purple-500/30">獲得賞品</span>
+                                            <div class="text-sm font-bold text-white mt-1.5">${p.name}</div>
+                                            <div class="text-[10px] text-slate-400 mt-0.5">獲得時間: ${p.time}</div>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs px-3 py-1.5 rounded-xl font-bold ${isShipped ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}">
+                                                ${isShipped ? '📦 已寄送' : (hasShipping ? '📝 已轉單' : '⏳ 未出貨')}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span class="text-xs px-3 py-1.5 rounded-xl font-bold ${isShipped ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}">
-                                            ${isShipped ? '📦 已寄送' : '⏳ 未出貨'}
-                                        </span>
+                                    
+                                    ${hasShipping ? `
+                                        <div class="bg-black/30 p-2.5 rounded-xl text-[11px] text-indigo-200/80 border border-white/5">
+                                            <div class="font-bold text-purple-300 mb-0.5">轉單物流：${p.shippingInfo.method}</div>
+                                            ${p.shippingInfo.method === '賣貨便' ? `單號: ${p.shippingInfo.code}` : ''}
+                                            ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} \vert{} 門市: ${p.shippingInfo.branch}` : ''}
+                                            ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} \vert{} 地址: ${p.shippingInfo.address}` : ''}
+                                        </div>
+                                    ` : ''}
+
+                                    <div class="flex justify-end gap-2 pt-1">
+                                        <button onclick="openShippingModal(${idx}, '${p.name.replace(/'/g, "\\'")}')" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-md shadow-purple-500/20 transition">
+                                            ${hasShipping ? '修改轉單資訊' : '📦 申請轉單'}
+                                        </button>
                                     </div>
                                 </div>
                             `;
@@ -337,6 +420,100 @@
                     </div>
                 </div>
             `;
+        }
+
+        // 開啟轉單 Modal
+        function openShippingModal(prizeIdx, prizeName) {
+            document.getElementById('modal-prize-index').value = prizeIdx;
+            document.getElementById('modal-prize-title').innerText = `賞品：${prizeName}`;
+            
+            // 如果該賞品已經有填過，帶入預設值
+            const prizes = currentMemberData.prizes || [];
+            const p = prizes[prizeIdx];
+            if (p && p.shippingInfo) {
+                document.getElementById('shipping-method').value = p.shippingInfo.method;
+                handleShippingMethodChange();
+                if (p.shippingInfo.method === '賣貨便') {
+                    document.getElementById('ship-c2c-code').value = p.shippingInfo.code || '';
+                } else if (p.shippingInfo.method === '店到店') {
+                    document.getElementById('ship-store-name').value = p.shippingInfo.name || '';
+                    document.getElementById('ship-store-phone').value = p.shippingInfo.phone || '';
+                    document.getElementById('ship-store-branch').value = p.shippingInfo.branch || '';
+                } else if (p.shippingInfo.method === '宅配') {
+                    document.getElementById('ship-home-name').value = p.shippingInfo.name || '';
+                    document.getElementById('ship-home-phone').value = p.shippingInfo.phone || '';
+                    document.getElementById('ship-home-address').value = p.shippingInfo.address || '';
+                }
+            } else {
+                document.getElementById('shipping-method').value = '賣貨便';
+                handleShippingMethodChange();
+                document.getElementById('ship-c2c-code').value = '';
+            }
+
+            document.getElementById('shipping-modal').classList.remove('hidden');
+        }
+
+        function closeShippingModal() {
+            document.getElementById('shipping-modal').classList.add('hidden');
+        }
+
+        // 切換物流表單欄位顯示
+        function handleShippingMethodChange() {
+            const method = document.getElementById('shipping-method').value;
+            document.querySelectorAll('.shipping-fields').forEach(el => el.classList.add('hidden'));
+            if (method === '賣貨便') {
+                document.getElementById('field-c2c').classList.remove('hidden');
+            } else if (method === '店到店') {
+                document.getElementById('field-store').classList.remove('hidden');
+            } else if (method === '宅配') {
+                document.getElementById('field-home').classList.remove('hidden');
+            }
+        }
+
+        // 送出轉單資訊至 Supabase
+        async function submitShippingInfo() {
+            const prizeIdx = parseInt(document.getElementById('modal-prize-index').value);
+            const method = document.getElementById('shipping-method').value;
+            
+            let info = { method: method };
+
+            if (method === '賣貨便') {
+                const code = document.getElementById('ship-c2c-code').value.trim();
+                if (!code) { alert('請填寫賣貨便單號！'); return; }
+                info.code = code;
+            } else if (method === '店到店') {
+                const name = document.getElementById('ship-store-name').value.trim();
+                const phone = document.getElementById('ship-store-phone').value.trim();
+                const branch = document.getElementById('ship-store-branch').value.trim();
+                if (!name || !phone || !branch) { alert('請完整填寫收件人姓名、電話與門市資訊！'); return; }
+                info.name = name; info.phone = phone; info.branch = branch;
+            } else if (method === '宅配') {
+                const name = document.getElementById('ship-home-name').value.trim();
+                const phone = document.getElementById('ship-home-phone').value.trim();
+                const address = document.getElementById('ship-home-address').value.trim();
+                if (!name || !phone || !address) { alert('請完整填寫收件人姓名、電話與宅配地址！'); return; }
+                info.name = name; info.phone = phone; info.address = address;
+            }
+
+            const prizes = currentMemberData.prizes || [];
+            if (prizes[prizeIdx]) {
+                prizes[prizeIdx].shippingInfo = info;
+            }
+
+            // 更新到 Supabase
+            const { error } = await _supabase
+                .from('members')
+                .update({ prizes: prizes })
+                .eq('phone', currentUserPhone);
+
+            if (error) {
+                alert('轉單資訊送出失敗，請稍後再試');
+                return;
+            }
+
+            alert('轉單物流資訊已成功送出！');
+            closeShippingModal();
+            render();
         }
 
         function renderCouponsTab(coupons, points) {
