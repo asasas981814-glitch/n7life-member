@@ -21,7 +21,7 @@
     </div>
 
     <!-- 官方管理主介面 -->
-    <div id="admin-panel" class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden flex flex-col min-h-[85vh] hidden">
+    <div id="admin-panel" class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden flex flex-col min-h-[85vh] hidden relative">
         <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
             <div>
                 <span class="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">官方管理後台</span>
@@ -32,13 +32,13 @@
 
         <div class="flex-1 p-4 overflow-y-auto space-y-5 bg-slate-50">
             
-            <!-- 已註冊會員總清單 -->
+            <!-- 已註冊會員總清單 (含詳細檢視與刪除) -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-sm font-bold text-slate-800">📋 已註冊會員總清單</h3>
                     <span id="member-count-badge" class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">共 0 人</span>
                 </div>
-                <div id="member-list-container" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+                <div id="member-list-container" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
             </div>
 
             <!-- 賞品出貨狀態與轉單物流檢視 (待處理 / 歷史紀錄) -->
@@ -117,6 +117,27 @@
         </div>
     </div>
 
+    <!-- 會員詳細狀態檢視彈窗 Modal -->
+    <div id="member-detail-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                <div>
+                    <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">會員狀態總覽</span>
+                    <h3 id="modal-user-name" class="text-base font-bold text-slate-800 mt-1"></h3>
+                </div>
+                <button onclick="closeMemberModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm">✕</button>
+            </div>
+
+            <div id="modal-detail-content" class="flex-1 overflow-y-auto py-4 space-y-4 text-xs">
+                <!-- 動態注入該會員的所有資訊 -->
+            </div>
+
+            <div class="pt-3 border-t border-slate-100">
+                <button onclick="closeMemberModal()" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition">關閉視窗</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://sanuaxbkzuvpgrfddodb.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_9sgAfywutJsCQqyQWu9Thw_fL7WlEph';
@@ -144,10 +165,11 @@
                     <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
                         <div>
                             <div class="font-bold text-slate-800">${u.name} <span class="text-slate-500 font-normal">(${u.phone})</span></div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">密碼: <span class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-mono">${u.pwd}</span> | 餘額: <span class="text-indigo-600 font-bold">$${u.balance.toLocaleString()}</span> | 點數: <span class="text-amber-600">${u.points}點</span></div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">餘額: <span class="text-indigo-600 font-bold">$${u.balance.toLocaleString()}</span> | 點數: <span class="text-amber-600">${u.points}點</span></div>
                         </div>
-                        <div>
-                            <button onclick="deleteMember('${u.phone}', '${u.name}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded-xl font-bold transition text-[11px]">刪除帳號</button>
+                        <div class="flex gap-1.5">
+                            <button onclick="viewMemberDetail('${u.phone}')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2.5 py-1.5 rounded-xl font-bold transition text-[11px]">🔍 詳細狀態</button>
+                            <button onclick="deleteMember('${u.phone}', '${u.name}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1.5 rounded-xl font-bold transition text-[11px]">刪除</button>
                         </div>
                     </div>
                 `).join('');
@@ -221,6 +243,109 @@
             document.getElementById('admin-target-phone').innerHTML = optionsHtml;
             document.getElementById('admin-prize-phone').innerHTML = optionsHtml;
             document.getElementById('admin-point-phone').innerHTML = optionsHtml;
+        }
+
+        // 查看特定會員的完整詳細狀態
+        function viewMemberDetail(phone) {
+            const u = allMembers.find(item => item.phone === phone);
+            if (!u) return;
+
+            document.getElementById('modal-user-name').innerText = `${u.name} (${u.phone})`;
+
+            const prizes = u.prizes || [];
+            const coupons = u.coupons || [];
+            const wallets = u.wallets || [];
+
+            const contentHtml = `
+                <!-- 帳號基本概況 -->
+                <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                    <div>
+                        <div class="text-[10px] text-slate-400">錢包餘額</div>
+                        <div class="text-sm font-bold text-indigo-600">NT$ ${u.balance.toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400">集點卡</div>
+                        <div class="text-sm font-bold text-amber-600">${u.points} / 10 點</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400">帳號密碼</div>
+                        <div class="text-xs font-mono font-bold text-slate-700">${u.pwd}</div>
+                    </div>
+                </div>
+
+                <!-- 賞品櫃明細 -->
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-700 mb-2 flex justify-between items-center">
+                        <span>📦 賞品櫃清單</span>
+                        <span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-normal">${prizes.length} 件</span>
+                    </h4>
+                    ${prizes.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">目前無任何賞品</p>' : ''}
+                    <div class="space-y-1.5">
+                        ${prizes.map(p => {
+                            const isShipped = p.status === 'shipping' || p.status === 'shipped';
+                            return `
+                                <div class="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
+                                    <div>
+                                        <div class="font-bold text-slate-800">${p.name}</div>
+                                        <div class="text-[9px] text-slate-400">${p.time}</div>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded font-bold ${isShipped ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">
+                                        ${isShipped ? '已寄送' : (p.shippingInfo ? '已申請轉單' : '未寄送')}
+                                    </span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- 優惠券明細 -->
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-700 mb-2 flex justify-between items-center">
+                        <span>🎟️ 持有優惠券</span>
+                        <span class="text-[10px] bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full font-normal">${coupons.length} 張</span>
+                    </h4>
+                    ${coupons.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">無優惠券</p>' : ''}
+                    <div class="space-y-1.5">
+                        ${coupons.map(c => `
+                            <div class="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
+                                <div>
+                                    <div class="font-bold text-slate-800">${c.title}</div>
+                                    <div class="text-[9px] text-slate-400">代碼: ${c.code} \vert{} 期限: ${c.expire}</div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded font-bold ${c.status === 'unused' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}">
+                                    ${c.status === 'unused' ? '未使用' : '已使用'}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 最近交易紀錄 -->
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-700 mb-2">💰 交易明細 (最新 5 筆)</h4>
+                    ${wallets.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">無交易紀錄</p>' : ''}
+                    <div class="space-y-1.5">
+                        ${wallets.slice().reverse().slice(0, 5).map(w => `
+                            <div class="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
+                                <div>
+                                    <div class="font-medium text-slate-700">${w.desc}</div>
+                                    <div class="text-[9px] text-slate-400">${w.time}</div>
+                                </div>
+                                <span class="font-bold ${w.amount >= 0 ? 'text-emerald-600' : 'text-rose-500'}">
+                                    ${w.amount >= 0 ? '+' : ''}${w.amount}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modal-detail-content').innerHTML = contentHtml;
+            document.getElementById('member-detail-modal').classList.remove('hidden');
+        }
+
+        function closeMemberModal() {
+            document.getElementById('member-detail-modal').classList.add('hidden');
         }
 
         async function deleteMember(phone, name) {
