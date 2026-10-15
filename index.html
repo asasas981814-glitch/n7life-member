@@ -276,7 +276,7 @@
                 points: 0,
                 wallets: [{ type: 'topup', amount: 0, desc: '註冊成功開戶', time: new Date().toLocaleString() }],
                 prizes: [],
-                coupons: [{ id: Date.now(), title: '新會員迎賓折價券', code: 'WELCOME', status: 'unused', expire: '2026-12-31' }]
+                coupons: [{ id: Date.now(), title: '新會員好禮-30折價券', code: 'WELCOME30', status: 'unused', expire: '2026-12-31' }]
             };
 
             const { error } = await _supabase.from('members').insert([newMember]);
@@ -299,7 +299,6 @@
             const prizes = user.prizes || [];
             const coupons = user.coupons || [];
 
-            // 分離未出貨與已寄送賞品
             const pendingPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status !== 'shipped' && p.status !== 'shipping');
             const historyPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status === 'shipped' || p.status === 'shipping');
 
