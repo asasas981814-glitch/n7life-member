@@ -41,11 +41,24 @@
                 <div id="member-list-container" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
             </div>
 
-            <!-- 賞品出貨狀態與轉單物流檢視 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 class="text-sm font-bold text-slate-800 mb-2">📦 會員賞品與轉單物流檢視</h3>
-                <p class="text-[11px] text-slate-400 mb-3">可查看會員填寫的轉單寄送資料，並切換出貨狀態</p>
-                <div id="admin-prizes-container" class="space-y-2.5 max-h-60 overflow-y-auto pr-1"></div>
+            <!-- 賞品出貨狀態與轉單物流檢視 (待處理 / 歷史紀錄) -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800 mb-1 flex justify-between items-center">
+                        <span>⏳ 待出貨/待處理賞品</span>
+                        <span id="pending-count-badge" class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">0 件</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mb-2.5">點擊「完成寄送」將可把賞品歸類至歷史紀錄</p>
+                    <div id="admin-pending-prizes" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-500 mb-2 flex justify-between items-center">
+                        <span>📦 歷史已出貨紀錄</span>
+                        <span id="shipped-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">0 件</span>
+                    </h3>
+                    <div id="admin-shipped-prizes" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+                </div>
             </div>
 
             <!-- 1. 會員錢包加扣款 -->
@@ -140,43 +153,69 @@
                 `).join('');
             }
 
-            const prizesContainer = document.getElementById('admin-prizes-container');
-            let allPrizesHtml = '';
-            let hasAnyPrize = false;
+            const pendingContainer = document.getElementById('admin-pending-prizes');
+            const shippedContainer = document.getElementById('admin-shipped-prizes');
+            
+            let pendingHtml = '';
+            let shippedHtml = '';
+            let pendingCount = 0;
+            let shippedCount = 0;
 
             allMembers.forEach(u => {
                 const userPrizes = u.prizes || [];
                 userPrizes.forEach((p, pIdx) => {
-                    hasAnyPrize = true;
                     const isShipped = p.status === 'shipping' || p.status === 'shipped';
                     const hasShipping = !!p.shippingInfo;
-                    
-                    allPrizesHtml += `
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-2 text-xs">
-                            <div class="flex justify-between items-start">
+
+                    if (!isShipped) {
+                        pendingCount++;
+                        pendingHtml += `
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-2 text-xs">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-bold text-slate-800 text-sm">${p.name}</div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5">會員: ${u.name} (${u.phone})</div>
+                                    </div>
+                                    <div>
+                                        <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] bg-amber-500 text-white hover:bg-amber-600 transition shadow-sm">
+                                            🚚 完成寄送
+                                        </button>
+                                    </div>
+                                </div>
+
+                                ${hasShipping ? `
+                                    <div class="bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100 text-[11px] text-slate-700">
+                                        <span class="font-bold text-indigo-700">【會員轉單物流】</span> 方式：${p.shippingInfo.method}<br>${p.shippingInfo.method === '賣貨便' ? `單號: <span class="font-mono font-bold text-slate-900">${p.shippingInfo.code}</span>` : ''}
+                                        ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 門市: ${p.shippingInfo.branch}` : ''}
+                                        ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 地址: ${p.shippingInfo.address}` : ''}
+                                    </div>
+                                ` : '<div class="text-[10px] text-slate-400 italic">會員尚未申請轉單</div>'}
+                            </div>
+                        `;
+                    } else {
+                        shippedCount++;
+                        shippedHtml += `
+                            <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs opacity-75">
                                 <div>
-                                    <div class="font-bold text-slate-800 text-sm">${p.name}</div>
-                                    <div class="text-[11px] text-slate-500 mt-0.5">會員: ${u.name} (${u.phone})</div>
+                                    <div class="font-bold text-slate-700">${p.name}</div>
+                                    <div class="text-[10px] text-slate-400">會員: ${u.name} (${u.phone})</div>
                                 </div>
                                 <div>
-                                    <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] transition ${isShipped ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-                                        ${isShipped ? '📦 已寄送' : '⏳ 未出貨'}
+                                    <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-2.5 py-1 rounded-lg text-[10px] bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
+                                        ↺ 復原未寄送
                                     </button>
                                 </div>
                             </div>
-
-                            ${hasShipping ? `
-                                <div class="bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100 text-[11px] text-slate-700">
-                                    <span class="font-bold text-indigo-700">【會員轉單物流】</span> 方式：${p.shippingInfo.method}<br>${p.shippingInfo.method === '賣貨便' ? `單號: <span class="font-mono font-bold text-slate-900">${p.shippingInfo.code}</span>` : ''}
-                                    ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 門市: ${p.shippingInfo.branch}` : ''}
-                                    ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 地址: ${p.shippingInfo.address}` : ''}
-                                </div>
-                            ` : '<div class="text-[10px] text-slate-400 italic">會員尚未填寫轉單資訊</div>'}
-                        </div>
-                    `;
+                        `;
+                    }
                 });
             });
-            prizesContainer.innerHTML = hasAnyPrize ? allPrizesHtml : `<p class="text-xs text-slate-400 text-center py-4">目前無任何賞品</p>`;
+
+            document.getElementById('pending-count-badge').innerText = `${pendingCount} 件`;
+            document.getElementById('shipped-count-badge').innerText = `${shippedCount} 件`;
+
+            pendingContainer.innerHTML = pendingCount > 0 ? pendingHtml : `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50/50 rounded-xl">尚無待寄送賞品</p>`;
+            shippedContainer.innerHTML = shippedCount > 0 ? shippedHtml : `<p class="text-xs text-slate-400 text-center py-3">無歷史出貨紀錄</p>`;
 
             const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
             document.getElementById('admin-target-phone').innerHTML = optionsHtml;
