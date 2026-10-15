@@ -78,7 +78,7 @@
                     <label class="text-xs font-medium text-indigo-200/80">選擇物流方式</label>
                     <select id="shipping-method" onchange="handleShippingMethodChange()" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
                         <option value="賣貨便" class="bg-slate-900">7-11 賣貨便</option>
-                        <option value="店到店" class="bg-slate-900">全家/萊爾富 店到店</option>
+                        <option value="店到店" class="bg-slate-900">7-11 / 全家 店到店</option>
                         <option value="宅配" class="bg-slate-900">黑貓/郵局 宅配</option>
                     </select>
                 </div>
@@ -101,7 +101,7 @@
                     </div>
                     <div>
                         <label class="text-xs font-medium text-indigo-200/80">取貨超商門市名稱 / 店號</label>
-                        <input type="text" id="ship-store-branch" placeholder="例如: 全家 XXXXX店" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
+                        <input type="text" id="ship-store-branch" placeholder="例如: 7-11/全家 XXXXX店" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
                     </div>
                 </div>
 
@@ -299,6 +299,10 @@
             const prizes = user.prizes || [];
             const coupons = user.coupons || [];
 
+            // 分離未出貨與已寄送賞品
+            const pendingPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status !== 'shipped' && p.status !== 'shipping');
+            const historyPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status === 'shipped' || p.status === 'shipping');
+
             return `
                 <div class="bg-gradient-to-r from-purple-900/60 via-indigo-900/60 to-slate-900/80 p-5 rounded-b-3xl border-b border-purple-500/20 shadow-lg">
                     <div class="flex justify-between items-center mb-4">
@@ -326,13 +330,13 @@
 
                 <div class="flex border-b border-white/10 bg-slate-950/40 text-sm font-medium">
                     <button onclick="switchMemberTab('wallet')" class="flex-1 py-3 text-center transition ${activeTab === 'wallet' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">錢包明細</button>
-                    <button onclick="switchMemberTab('prizes')" class="flex-1 py-3 text-center transition ${activeTab === 'prizes' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">賞品櫃 (${prizes.length})</button>
+                    <button onclick="switchMemberTab('prizes')" class="flex-1 py-3 text-center transition ${activeTab === 'prizes' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">賞品櫃 (${pendingPrizes.length})</button>
                     <button onclick="switchMemberTab('coupons')" class="flex-1 py-3 text-center transition ${activeTab === 'coupons' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">優惠與集點</button>
                 </div>
 
                 <div class="flex-1 p-4 overflow-y-auto max-h-[52vh]">
                     ${activeTab === 'wallet' ? renderWalletTab(wallets) : ''}
-                    ${activeTab === 'prizes' ? renderPrizesTab(prizes) : ''}
+                    ${activeTab === 'prizes' ? renderPrizesTab(pendingPrizes, historyPrizes) : ''}
                     ${activeTab === 'coupons' ? renderCouponsTab(coupons, user.points) : ''}
                 </div>
             `;
@@ -376,47 +380,73 @@
             `;
         }
 
-        function renderPrizesTab(prizes) {
+        function renderPrizesTab(pendingPrizes, historyPrizes) {
             return `
-                <div>
-                    <h3 class="text-xs font-bold text-indigo-300/80 uppercase tracking-wider mb-3">我的賞品櫃</h3>
-                    <div class="space-y-3">
-                        ${prizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-6">您的賞品櫃目前空空如也</p>' : ''}
-                        ${prizes.map((p, idx) => {
-                            const isShipped = p.status === 'shipping' || p.status === 'shipped';
-                            const hasShipping = !!p.shippingInfo;
-                            return `
-                                <div class="bg-white/5 p-3.5 rounded-2xl border border-white/5 flex flex-col gap-2.5">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium border border-purple-500/30">獲得賞品</span>
-                                            <div class="text-sm font-bold text-white mt-1.5">${p.name}</div>
-                                            <div class="text-[10px] text-slate-400 mt-0.5">獲得時間: ${p.time}</div>
+                <div class="space-y-5">
+                    <div>
+                        <h3 class="text-xs font-bold text-indigo-300/80 uppercase tracking-wider mb-3 flex justify-between items-center">
+                            <span>🎁 當前賞品 (待處理)</span>
+                            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-normal">${pendingPrizes.length} 件</span>
+                        </h3>
+                        <div class="space-y-3">
+                            ${pendingPrizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-4 bg-white/5 rounded-2xl">目前無未寄送的賞品</p>' : ''}
+                            ${pendingPrizes.map((p) => {
+                                const hasShipping = !!p.shippingInfo;
+                                return `
+                                    <div class="bg-white/5 p-3.5 rounded-2xl border border-white/5 flex flex-col gap-2.5">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-medium border border-purple-500/30">獲得賞品</span>
+                                                <div class="text-sm font-bold text-white mt-1.5">${p.name}</div>
+                                                <div class="text-[10px] text-slate-400 mt-0.5">獲得時間: ${p.time}</div>
+                                            </div>
+                                            <div>
+                                                <span class="text-xs px-3 py-1.5 rounded-xl font-bold ${hasShipping ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}">
+                                                    ${hasShipping ? '📝 已轉單' : '⏳ 待申請'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span class="text-xs px-3 py-1.5 rounded-xl font-bold ${isShipped ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}">
-                                                ${isShipped ? '📦 已寄送' : (hasShipping ? '📝 已轉單' : '⏳ 未出貨')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    ${hasShipping ? `
-                                        <div class="bg-black/30 p-2.5 rounded-xl text-[11px] text-indigo-200/80 border border-white/5">
-                                            <div class="font-bold text-purple-300 mb-0.5">轉單物流：${p.shippingInfo.method}</div>
-                                            ${p.shippingInfo.method === '賣貨便' ? `單號: ${p.shippingInfo.code}` : ''}
-                                            ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} \vert{} 門市: ${p.shippingInfo.branch}` : ''}
-                                            ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} \vert{} 地址: ${p.shippingInfo.address}` : ''}
-                                        </div>
-                                    ` : ''}
+                                        
+                                        ${hasShipping ? `
+                                            <div class="bg-black/30 p-2.5 rounded-xl text-[11px] text-indigo-200/80 border border-white/5">
+                                                <div class="font-bold text-purple-300 mb-0.5">轉單物流：${p.shippingInfo.method}</div>
+                                                ${p.shippingInfo.method === '賣貨便' ? `單號: ${p.shippingInfo.code}` : ''}
+                                                ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} \vert{} 門市: ${p.shippingInfo.branch}` : ''}
+                                                ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} \vert{} 地址: ${p.shippingInfo.address}` : ''}
+                                            </div>
+                                        ` : ''}
 
-                                    <div class="flex justify-end gap-2 pt-1">
-                                        <button onclick="openShippingModal(${idx}, '${p.name.replace(/'/g, "\\'")}')" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-md shadow-purple-500/20 transition">
-                                            ${hasShipping ? '修改轉單資訊' : '📦 申請轉單'}
-                                        </button>
+                                        <div class="flex justify-end gap-2 pt-1">
+                                            <button onclick="openShippingModal(${p.originalIndex}, '${p.name.replace(/'/g, "\\'")}')" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-md shadow-purple-500/20 transition">
+                                                ${hasShipping ? '修改轉單資訊' : '📦 申請轉單'}
+                                            </button>
+                                        </div>
                                     </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- 歷史出貨紀錄區域 -->
+                    <div class="pt-2 border-t border-white/10">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
+                            <span>🚚 歷史寄送紀錄</span>
+                            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-normal">${historyPrizes.length} 件</span>
+                        </h3>
+                        <div class="space-y-2">
+                            ${historyPrizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-3">尚無已寄送的歷史紀錄</p>' : ''}
+                            ${historyPrizes.map((p) => `
+                                <div class="bg-white/5 p-3 rounded-2xl border border-white/5 opacity-70 flex justify-between items-center">
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-300">${p.name}</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5">獲得時間: ${p.time}</div>
+                                    </div>
+                                    <span class="text-[11px] bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-xl font-bold border border-emerald-500/30">
+                                        📦 已出貨
+                                    </span>
                                 </div>
-                            `;
-                        }).join('')}
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             `;
@@ -427,7 +457,6 @@
             document.getElementById('modal-prize-index').value = prizeIdx;
             document.getElementById('modal-prize-title').innerText = `賞品：${prizeName}`;
             
-            // 如果該賞品已經有填過，帶入預設值
             const prizes = currentMemberData.prizes || [];
             const p = prizes[prizeIdx];
             if (p && p.shippingInfo) {
@@ -457,7 +486,6 @@
             document.getElementById('shipping-modal').classList.add('hidden');
         }
 
-        // 切換物流表單欄位顯示
         function handleShippingMethodChange() {
             const method = document.getElementById('shipping-method').value;
             document.querySelectorAll('.shipping-fields').forEach(el => el.classList.add('hidden'));
@@ -470,7 +498,6 @@
             }
         }
 
-        // 送出轉單資訊至 Supabase
         async function submitShippingInfo() {
             const prizeIdx = parseInt(document.getElementById('modal-prize-index').value);
             const method = document.getElementById('shipping-method').value;
@@ -500,7 +527,6 @@
                 prizes[prizeIdx].shippingInfo = info;
             }
 
-            // 更新到 Supabase
             const { error } = await _supabase
                 .from('members')
                 .update({ prizes: prizes })
