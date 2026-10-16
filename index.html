@@ -83,13 +83,11 @@
                     </select>
                 </div>
 
-                <!-- 賣貨便欄位 -->
                 <div id="field-c2c" class="shipping-fields">
                     <label class="text-xs font-medium text-indigo-200/80">賣貨便取貨代碼 / 訂單編號</label>
                     <input type="text" id="ship-c2c-code" placeholder="請輸入賣貨便單號" class="w-full mt-1 px-3 py-2.5 glass-input rounded-xl text-sm outline-none">
                 </div>
 
-                <!-- 店到店欄位 -->
                 <div id="field-store" class="shipping-fields hidden space-y-3">
                     <div>
                         <label class="text-xs font-medium text-indigo-200/80">收件人姓名</label>
@@ -105,7 +103,6 @@
                     </div>
                 </div>
 
-                <!-- 宅配欄位 -->
                 <div id="field-home" class="shipping-fields hidden space-y-3">
                     <div>
                         <label class="text-xs font-medium text-indigo-200/80">收件人姓名</label>
@@ -276,7 +273,8 @@
                 points: 0,
                 wallets: [{ type: 'topup', amount: 0, desc: '註冊成功開戶', time: new Date().toLocaleString() }],
                 prizes: [],
-                coupons: [{ id: Date.now(), title: '新會員好禮-30折價券', code: 'WELCOME30', status: 'unused', expire: '2026-12-31' }]
+                coupons: [{ id: Date.now(), title: '新會員好禮-30折價券', code: 'WELCOME30', status: 'unused', expire: '2026-12-31' }],
+                cards: {}
             };
 
             const { error } = await _supabase.from('members').insert([newMember]);
@@ -291,13 +289,14 @@
             render();
         }
 
-        let activeTab = 'wallet';
+        let activeTab = 'events';
 
         function renderMemberDashboard() {
             const user = currentMemberData;
             const wallets = user.wallets || [];
             const prizes = user.prizes || [];
             const coupons = user.coupons || [];
+            const cards = user.cards || {};
 
             const pendingPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status !== 'shipped' && p.status !== 'shipping');
             const historyPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status === 'shipped' || p.status === 'shipping');
@@ -327,15 +326,17 @@
                     </div>
                 </div>
 
-                <div class="flex border-b border-white/10 bg-slate-950/40 text-sm font-medium">
-                    <button onclick="switchMemberTab('wallet')" class="flex-1 py-3 text-center transition ${activeTab === 'wallet' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">錢包明細</button>
+                <div class="flex border-b border-white/10 bg-slate-950/40 text-xs font-medium">
+                    <button onclick="switchMemberTab('events')" class="flex-1 py-3 text-center transition ${activeTab === 'events' ? 'text-pink-300 border-b-2 border-pink-500 font-bold bg-white/5' : 'text-slate-400'}">🔥 進行中活動</button>
                     <button onclick="switchMemberTab('prizes')" class="flex-1 py-3 text-center transition ${activeTab === 'prizes' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">賞品櫃 (${pendingPrizes.length})</button>
+                    <button onclick="switchMemberTab('wallet')" class="flex-1 py-3 text-center transition ${activeTab === 'wallet' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">錢包明細</button>
                     <button onclick="switchMemberTab('coupons')" class="flex-1 py-3 text-center transition ${activeTab === 'coupons' ? 'text-purple-300 border-b-2 border-purple-500 font-bold bg-white/5' : 'text-slate-400'}">優惠與集點</button>
                 </div>
 
                 <div class="flex-1 p-4 overflow-y-auto max-h-[52vh]">
-                    ${activeTab === 'wallet' ? renderWalletTab(wallets) : ''}
+                    ${activeTab === 'events' ? renderEventsTab(cards) : ''}
                     ${activeTab === 'prizes' ? renderPrizesTab(pendingPrizes, historyPrizes) : ''}
+                    ${activeTab === 'wallet' ? renderWalletTab(wallets) : ''}
                     ${activeTab === 'coupons' ? renderCouponsTab(coupons, user.points) : ''}
                 </div>
             `;
@@ -355,6 +356,52 @@
             currentMemberData = null;
             localStorage.removeItem('sys_current_user');
             render();
+        }
+
+        // 動態集字大挑戰
+        function renderEventsTab(cards) {
+            const cardEntries = Object.entries(cards).filter(([_, qty]) => qty > 0);
+            const totalTypes = cardEntries.length;
+            const totalQty = cardEntries.reduce((sum, [_, qty]) => sum + qty, 0);
+
+            return `
+                <div class="space-y-4">
+                    <div class="bg-gradient-to-br from-pink-900/60 via-purple-900/60 to-indigo-900/80 p-4.5 rounded-3xl border border-pink-500/30 shadow-xl">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-[10px] bg-pink-500/30 text-pink-200 border border-pink-500/40 px-2.5 py-0.5 rounded-full font-bold">限時專屬活動</span>
+                                <h3 class="text-base font-bold text-white mt-1.5 neon-text-purple">🔤 集字大挑戰</h3>
+                            </div>
+                            <span class="text-xs bg-white/10 text-pink-300 px-2.5 py-1 rounded-xl font-bold border border-white/10">進行中</span>
+                        </div>
+                        <p class="text-xs text-indigo-200/80 mb-4">收集指定字卡組合，集齊即可向官方人員申請兌換大獎！</p>
+
+                        <!-- 字卡統計 -->
+                        <div class="bg-black/30 p-3 rounded-2xl border border-white/10 mb-4 flex justify-around text-center">
+                            <div>
+                                <div class="text-[10px] text-purple-300">收集種類</div>
+                                <div class="text-base font-bold text-white mt-0.5">${totalTypes} 種</div>
+                            </div>
+                            <div class="w-px bg-white/10"></div>
+                            <div>
+                                <div class="text-[10px] text-pink-300">字卡總數</div>
+                                <div class="text-base font-bold text-pink-400 mt-0.5">${totalQty} 張</div>
+                            </div>
+                        </div>
+
+                        <!-- 動態展示會員目前擁有的字卡 -->
+                        <div class="grid grid-cols-3 gap-2.5">
+                            ${totalTypes === 0 ? '<div class="col-span-3 text-center py-6 text-xs text-slate-400 bg-white/5 rounded-2xl border border-white/5">目前尚未獲得任何字卡，敬請期待活動發放！</div>' : ''}
+                            ${cardEntries.map(([char, qty]) => `
+                                <div class="p-3 rounded-2xl flex flex-col items-center justify-center border bg-gradient-to-b from-purple-600/40 to-pink-600/40 border-pink-400/50 shadow-lg shadow-pink-500/20">
+                                    <div class="text-xl font-extrabold text-white neon-text-purple">${char}</div>
+                                    <div class="text-[10px] mt-1 text-pink-300 font-bold">擁有 ${qty} 張</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function renderWalletTab(wallets) {
@@ -426,7 +473,6 @@
                         </div>
                     </div>
 
-                    <!-- 歷史出貨紀錄區域 -->
                     <div class="pt-2 border-t border-white/10">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
                             <span>🚚 歷史寄送紀錄</span>
@@ -451,7 +497,6 @@
             `;
         }
 
-        // 開啟轉單 Modal
         function openShippingModal(prizeIdx, prizeName) {
             document.getElementById('modal-prize-index').value = prizeIdx;
             document.getElementById('modal-prize-title').innerText = `賞品：${prizeName}`;
