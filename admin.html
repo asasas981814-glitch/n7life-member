@@ -7,9 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; }</style>
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; }
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-active { background-color: #ffffff; color: #4f46e5; font-weight: 700; shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .tab-inactive { color: #64748b; }
+        .tab-inactive:hover { color: #1e293b; background-color: rgba(255,255,255,0.5); }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center justify-center p-3 sm:p-4">
 
     <!-- 密碼登入驗證遮罩 -->
     <div id="login-box" class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
@@ -21,8 +27,9 @@
     </div>
 
     <!-- 官方管理主介面 -->
-    <div id="admin-panel" class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden flex flex-col min-h-[85vh] hidden relative">
-        <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+    <div id="admin-panel" class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden flex flex-col h-[90vh] hidden relative">
+        <!-- 頂部標頭 -->
+        <div class="bg-slate-900 text-white p-4 flex justify-between items-center flex-shrink-0">
             <div>
                 <span class="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">官方管理後台</span>
                 <h2 class="text-base font-bold mt-1">N7LiFe 管理系統 (雲端同步)</h2>
@@ -30,148 +37,154 @@
             <button onclick="lockAdmin()" class="bg-slate-800 text-xs px-3 py-1.5 rounded-xl hover:bg-slate-700 transition">登出鎖定</button>
         </div>
 
-        <div class="flex-1 p-4 overflow-y-auto space-y-5 bg-slate-50">
+        <!-- 頂部頁籤分頁導覽 -->
+        <div class="flex bg-slate-200/80 p-1.5 gap-1 border-b border-slate-200 text-xs font-medium flex-shrink-0">
+            <button onclick="switchAdminTab('members')" id="tab-btn-members" class="tab-btn flex-1 py-2 text-center rounded-xl tab-active">👥 會員</button>
+            <button onclick="switchAdminTab('shipping')" id="tab-btn-shipping" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">📦 出貨</button>
+            <button onclick="switchAdminTab('wallet')" id="tab-btn-wallet" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">💰 異動</button>
+            <button onclick="switchAdminTab('marketing')" id="tab-btn-marketing" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">🎟️ 券/卡</button>
+        </div>
+
+        <!-- 分頁主內容區塊 -->
+        <div class="flex-1 p-4 overflow-y-auto bg-slate-50">
             
-            <!-- 已註冊會員總清單 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-slate-800">📋 已註冊會員總清單</h3>
-                    <span id="member-count-badge" class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">共 0 人</span>
-                </div>
-                <div id="member-list-container" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
-            </div>
-
-            <!-- 賞品出貨狀態與轉單物流檢視 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div>
-                    <h3 class="text-sm font-bold text-slate-800 mb-1 flex justify-between items-center">
-                        <span>⏳ 待出貨/待處理賞品</span>
-                        <span id="pending-count-badge" class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">0 件</span>
-                    </h3>
-                    <p class="text-[11px] text-slate-400 mb-2.5">點擊「完成寄送」將可把賞品歸類至歷史紀錄</p>
-                    <div id="admin-pending-prizes" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
-                </div>
-
-                <div class="pt-3 border-t border-slate-100">
-                    <h3 class="text-xs font-bold text-slate-500 mb-2 flex justify-between items-center">
-                        <span>📦 歷史已出貨紀錄</span>
-                        <span id="shipped-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">0 件</span>
-                    </h3>
-                    <div id="admin-shipped-prizes" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+            <!-- 分頁 1：會員總覽與管理 -->
+            <div id="tab-content-members" class="space-y-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-slate-800">📋 已註冊會員總清單</h3>
+                        <span id="member-count-badge" class="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-full font-bold">共 0 人</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-3">可點擊「🔍 詳細狀態」檢視會員的錢包、賞品、折價券與字卡背包狀況。</p>
+                    <div id="member-list-container" class="space-y-2 max-h-[62vh] overflow-y-auto pr-1"></div>
                 </div>
             </div>
 
-            <!-- 1. 會員錢包加扣款 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 class="text-sm font-bold text-slate-800 mb-3">1. 會員錢包加扣款</h3>
-                <div class="space-y-3">
+            <!-- 分頁 2：賞品出貨與轉單物流檢視 -->
+            <div id="tab-content-shipping" class="space-y-4 hidden">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <div>
-                        <label class="text-xs text-slate-500 font-medium">選擇會員</label>
-                        <select id="admin-target-phone" onchange="syncSelectedMember(this.value)" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
+                        <h3 class="text-sm font-bold text-slate-800 mb-1 flex justify-between items-center">
+                            <span>⏳ 待出貨 / 待處理賞品</span>
+                            <span id="pending-count-badge" class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">0 件</span>
+                        </h3>
+                        <p class="text-[11px] text-slate-400 mb-2.5">點擊「完成寄送」將可把賞品歸類至歷史紀錄。</p>
+                        <div id="admin-pending-prizes" class="space-y-2 max-h-[35vh] overflow-y-auto pr-1"></div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100">
+                        <h3 class="text-xs font-bold text-slate-500 mb-2 flex justify-between items-center">
+                            <span>📦 歷史已出貨紀錄</span>
+                            <span id="shipped-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">0 件</span>
+                        </h3>
+                        <div id="admin-shipped-prizes" class="space-y-2 max-h-[22vh] overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分頁 3：錢包、賞品發放、集點卡異動 -->
+            <div id="tab-content-wallet" class="space-y-4 hidden">
+                <!-- 全局發送目標選擇提示 -->
+                <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-2xl">
+                    <label class="text-xs font-bold text-indigo-900 block mb-1">🎯 當前操作目標會員</label>
+                    <select id="admin-target-phone" onchange="syncSelectedMember(this.value)" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 outline-none"></select>
+                </div>
+
+                <!-- 錢包加扣款 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-xs font-bold text-slate-800 mb-2.5">💰 錢包加扣款</h3>
+                    <div class="space-y-2.5">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[11px] text-slate-500">金額 (+加款 / -扣款)</label>
+                                <input type="number" id="admin-amount" placeholder="500 或 -200" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[11px] text-slate-500">異動說明</label>
+                                <input type="text" id="admin-reason" placeholder="例如: 活動贈點" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                            </div>
+                        </div>
+                        <button onclick="adminAdjustWallet()" class="w-full bg-indigo-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition">確認執行加扣款</button>
+                    </div>
+                </div>
+
+                <!-- 發放賞品 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-xs font-bold text-slate-800 mb-2.5">🎁 發放賞品至會員賞品櫃</h3>
+                    <div class="space-y-2.5">
+                        <div>
+                            <label class="text-[11px] text-slate-500">賞品名稱</label>
+                            <input type="text" id="admin-prize-name" placeholder="例如: SP賞 - 終極限定公仔" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                        </div>
+                        <button onclick="adminIssuePrize()" class="w-full bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">直接發放賞品</button>
+                    </div>
+                </div>
+
+                <!-- 集點卡加點 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-xs font-bold text-slate-800 mb-2.5">✦ 集點卡調整</h3>
+                    <div class="space-y-2.5">
+                        <div>
+                            <label class="text-[11px] text-slate-500">調整點數 (+1 或 -1)</label>
+                            <input type="number" id="admin-point-val" value="1" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                        </div>
+                        <button onclick="adminAdjustPoints()" class="w-full bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition">調整集點卡點數</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分頁 4：優惠券與集字卡發放專區 -->
+            <div id="tab-content-marketing" class="space-y-4 hidden">
+                <!-- 全局發送目標選擇 -->
+                <div class="bg-purple-50 border border-purple-100 p-3 rounded-2xl">
+                    <label class="text-xs font-bold text-purple-900 block mb-1">🎯 當前派發目標會員</label>
+                    <select id="admin-marketing-target-phone" onchange="syncSelectedMember(this.value)" class="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-sm font-bold text-purple-900 outline-none"></select>
+                </div>
+
+                <!-- 一鍵派發全體折價券 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                    <div class="text-xs font-bold text-slate-800">⚡ 全體發送新會員折價券</div>
+                    <p class="text-[11px] text-slate-400">點擊將發送「新會員好禮-30折價券 (WELCOME30)」給資料庫中全體會員。</p>
+                    <button onclick="adminBatchIssueWelcomeCoupon()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:opacity-95 transition">⚡ 一鍵發送給所有會員</button>
+                </div>
+
+                <!-- 單獨發券 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
+                    <div class="text-xs font-bold text-slate-800">🎟️ 單獨派發優惠券</div>
+                    <div>
+                        <label class="text-[11px] text-slate-500">優惠券名稱</label>
+                        <input type="text" id="admin-coupon-title" placeholder="例如: 滿千折百折價券" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="text-xs text-slate-500 font-medium">金額 (+加款 / -扣款)</label>
-                            <input type="number" id="admin-amount" placeholder="500 或 -200" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                            <label class="text-[11px] text-slate-500">優惠代碼</label>
+                            <input type="text" id="admin-coupon-code" placeholder="例如: SAVE100" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
                         <div>
-                            <label class="text-xs text-slate-500 font-medium">異動說明</label>
-                            <input type="text" id="admin-reason" placeholder="例如: 活動贈點" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                            <label class="text-[11px] text-slate-500">有效期限</label>
+                            <input type="date" id="admin-coupon-expire" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
                     </div>
-                    <button onclick="adminAdjustWallet()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition">確認執行加扣款</button>
-                </div>
-            </div>
-
-            <!-- 2. 發放賞品 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 class="text-sm font-bold text-slate-800 mb-3">2. 發放賞品至會員賞品櫃</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">發放對象會員</label>
-                        <select id="admin-prize-phone" onchange="syncSelectedMember(this.value)" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">賞品名稱</label>
-                        <input type="text" id="admin-prize-name" placeholder="例如: SP賞 - 終極限定公仔" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
-                    </div>
-                    <button onclick="adminIssuePrize()" class="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">直接發放賞品</button>
-                </div>
-            </div>
-
-            <!-- 3. 集點卡加點 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 class="text-sm font-bold text-slate-800 mb-3">3. 會員集點卡加點</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">選擇會員</label>
-                        <select id="admin-point-phone" onchange="syncSelectedMember(this.value)" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">調整點數 (+1 或 -1)</label>
-                        <input type="number" id="admin-point-val" value="1" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
-                    </div>
-                    <button onclick="adminAdjustPoints()" class="w-full bg-amber-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-amber-700 transition">調整集點卡點數</button>
-                </div>
-            </div>
-
-            <!-- 4. 優惠券發放與核銷管理 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <h3 class="text-sm font-bold text-slate-800">4. 優惠券發放與核銷管理</h3>
-                
-                <div class="bg-purple-50 p-3 rounded-xl border border-purple-100">
-                    <div class="text-xs font-bold text-purple-900 mb-1">⚡ 一鍵派發新會員折價券</div>
-                    <p class="text-[11px] text-purple-700/80 mb-2.5">點擊後將自動發放「新會員好禮-30折價券」給資料庫中**所有已註冊的會員**。</p>
-                    <button onclick="adminBatchIssueWelcomeCoupon()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:opacity-95 transition">
-                        ⚡ 一鍵發送給所有會員
-                    </button>
+                    <button onclick="adminIssueCoupon()" class="w-full bg-purple-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-purple-700 transition">派發優惠券</button>
                 </div>
 
-                <div class="pt-2 border-t border-slate-100 space-y-3">
-                    <div class="text-xs font-bold text-slate-700">單獨派發優惠券</div>
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">發放對象會員</label>
-                        <select id="admin-coupon-phone" onchange="syncSelectedMember(this.value)" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">優惠券名稱</label>
-                        <input type="text" id="admin-coupon-title" placeholder="例如: 滿千折百折價券" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
-                    </div>
+                <!-- 發放集字卡 -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
+                    <div class="text-xs font-bold text-slate-800">🔤 發放集字卡專區</div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="text-xs text-slate-500 font-medium">優惠代碼</label>
-                            <input type="text" id="admin-coupon-code" placeholder="例如: SAVE100" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                            <label class="text-[11px] text-slate-500">字卡內容 (自行輸入)</label>
+                            <input type="text" id="admin-card-char" placeholder="例如: N" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
                         <div>
-                            <label class="text-xs text-slate-500 font-medium">有效期限</label>
-                            <input type="date" id="admin-coupon-expire" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
+                            <label class="text-[11px] text-slate-500">發放數量</label>
+                            <input type="number" id="admin-card-qty" value="1" min="1" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
                     </div>
-                    <button onclick="adminIssueCoupon()" class="w-full bg-purple-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-purple-700 transition">派發優惠券</button>
+                    <button onclick="adminIssueCard()" class="w-full bg-pink-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-pink-700 transition">直接發放字卡</button>
                 </div>
             </div>
 
-            <!-- 5. 發放集字卡專區 -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-                <h3 class="text-sm font-bold text-slate-800">5. 發放集字卡專區</h3>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs text-slate-500 font-medium">選擇會員</label>
-                        <select id="admin-card-phone" onchange="syncSelectedMember(this.value)" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none"></select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-xs text-slate-500 font-medium">字卡內容 (例如: N, 7, e)</label>
-                            <input type="text" id="admin-card-char" placeholder="例如: N" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
-                        </div>
-                        <div>
-                            <label class="text-xs text-slate-500 font-medium">發放數量</label>
-                            <input type="number" id="admin-card-qty" value="1" min="1" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-sm outline-none">
-                        </div>
-                    </div>
-                    <button onclick="adminIssueCard()" class="w-full bg-pink-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-pink-700 transition">直接發放字卡</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -202,7 +215,26 @@
         const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allMembers = [];
-        let currentlySelectedPhone = null; // 保持目前被選擇的會員電話
+        let currentlySelectedPhone = null;
+        let activeAdminTab = 'members';
+
+        // 切換後台分頁
+        function switchAdminTab(tabName) {
+            activeAdminTab = tabName;
+            const tabs = ['members', 'shipping', 'wallet', 'marketing'];
+            
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const content = document.getElementById(`tab-content-${t}`);
+                if (t === tabName) {
+                    btn.className = "tab-btn flex-1 py-2 text-center rounded-xl tab-active";
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = "tab-btn flex-1 py-2 text-center rounded-xl tab-inactive";
+                    content.classList.add('hidden');
+                }
+            });
+        }
 
         async function loadAdminData() {
             const { data, error } = await _supabase.from('members').select('*');
@@ -296,35 +328,32 @@
             pendingContainer.innerHTML = pendingCount > 0 ? pendingHtml : `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50/50 rounded-xl">尚無待寄送賞品</p>`;
             shippedContainer.innerHTML = shippedCount > 0 ? shippedHtml : `<p class="text-xs text-slate-400 text-center py-3">無歷史出貨紀錄</p>`;
 
-            // 更新所有下拉選單
+            // 更新下拉選單
             const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
             
-            const dropdownIds = ['admin-target-phone', 'admin-prize-phone', 'admin-point-phone', 'admin-coupon-phone', 'admin-card-phone'];
-            dropdownIds.forEach(id => {
-                document.getElementById(id).innerHTML = optionsHtml;
-            });
+            document.getElementById('admin-target-phone').innerHTML = optionsHtml;
+            document.getElementById('admin-marketing-target-phone').innerHTML = optionsHtml;
 
-            // 如果有鎖定的會員，強制將所有下拉選單切換至該會員
             if (currentlySelectedPhone && allMembers.some(u => u.phone === currentlySelectedPhone)) {
                 syncSelectedMember(currentlySelectedPhone);
             } else if (allMembers.length > 0) {
                 currentlySelectedPhone = allMembers[0].phone;
+                syncSelectedMember(currentlySelectedPhone);
             }
         }
 
-        // 同步所有下拉選單的被選取對象
+        // 同步所有分頁中的下拉選單
         function syncSelectedMember(phone) {
             currentlySelectedPhone = phone;
-            const dropdownIds = ['admin-target-phone', 'admin-prize-phone', 'admin-point-phone', 'admin-coupon-phone', 'admin-card-phone'];
-            dropdownIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = phone;
-            });
+            const targetSel = document.getElementById('admin-target-phone');
+            const mktSel = document.getElementById('admin-marketing-target-phone');
+            if (targetSel) targetSel.value = phone;
+            if (mktSel) mktSel.value = phone;
         }
 
         // 發放字卡
         async function adminIssueCard() {
-            const phone = document.getElementById('admin-card-phone').value;
+            const phone = currentlySelectedPhone;
             const char = document.getElementById('admin-card-char').value.trim();
             const qty = parseInt(document.getElementById('admin-card-qty').value) || 1;
 
@@ -333,8 +362,13 @@
             const user = allMembers.find(u => u.phone === phone);
             if (!user) return;
 
-            if (!user.cards) user.cards = {};
-            user.cards[char] = (user.cards[char] || 0) + qty;
+            let currentCards = user.cards || {};
+            if (typeof currentCards !== 'object' || Array.isArray(currentCards)) {
+                currentCards = {};
+            }
+
+            currentCards[char] = (currentCards[char] || 0) + qty;
+            user.cards = currentCards;
 
             const { error } = await _supabase
                 .from('members')
@@ -342,7 +376,7 @@
                 .eq('phone', phone);
 
             if (error) {
-                alert('字卡發放失敗，請稍後再試');
+                alert('字卡發放失敗！請確認 Supabase 資料表 members 是否已新增 cards 欄位。');
                 return;
             }
 
@@ -381,7 +415,7 @@
         }
 
         async function adminIssueCoupon() {
-            const phone = document.getElementById('admin-coupon-phone').value;
+            const phone = currentlySelectedPhone;
             const title = document.getElementById('admin-coupon-title').value.trim();
             const code = document.getElementById('admin-coupon-code').value.trim();
             const expire = document.getElementById('admin-coupon-expire').value;
@@ -470,7 +504,6 @@
                     </div>
                 </div>
 
-                <!-- 集字卡背包 -->
                 <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                     <h4 class="font-bold text-slate-700 mb-2">🔤 持有字卡背包</h4>
                     <div class="flex flex-wrap gap-1.5">
@@ -594,7 +627,7 @@
         }
 
         async function adminAdjustWallet() {
-            const phone = document.getElementById('admin-target-phone').value;
+            const phone = currentlySelectedPhone;
             const amount = parseInt(document.getElementById('admin-amount').value);
             const reason = document.getElementById('admin-reason').value.trim() || '官方手動調整';
 
@@ -613,7 +646,7 @@
         }
 
         async function adminIssuePrize() {
-            const phone = document.getElementById('admin-prize-phone').value;
+            const phone = currentlySelectedPhone;
             const prizeName = document.getElementById('admin-prize-name').value.trim();
             if (!prizeName) { alert('請輸入賞品名稱'); return; }
 
@@ -629,7 +662,7 @@
         }
 
         async function adminAdjustPoints() {
-            const phone = document.getElementById('admin-point-phone').value;
+            const phone = currentlySelectedPhone;
             const val = parseInt(document.getElementById('admin-point-val').value);
             if (isNaN(val)) return;
 
