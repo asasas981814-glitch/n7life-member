@@ -28,7 +28,6 @@
 
     <!-- 官方管理主介面 -->
     <div id="admin-panel" class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden flex flex-col h-[90vh] hidden relative">
-        <!-- 頂部標頭 -->
         <div class="bg-slate-900 text-white p-4 flex justify-between items-center flex-shrink-0">
             <div>
                 <span class="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">官方管理後台</span>
@@ -45,7 +44,6 @@
             <button onclick="switchAdminTab('marketing')" id="tab-btn-marketing" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">🎟️ 券/卡</button>
         </div>
 
-        <!-- 分頁主內容區塊 -->
         <div class="flex-1 p-4 overflow-y-auto bg-slate-50">
             
             <!-- 分頁 1：會員總覽與管理 -->
@@ -74,7 +72,7 @@
 
                     <div class="pt-3 border-t border-slate-100">
                         <h3 class="text-xs font-bold text-slate-500 mb-2 flex justify-between items-center">
-                            <span>📦 歷史已出貨紀錄</span>
+                            <span>📦 歷史紀錄 (已寄送 / 已回收)</span>
                             <span id="shipped-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">0 件</span>
                         </h3>
                         <div id="admin-shipped-prizes" class="space-y-2 max-h-[22vh] overflow-y-auto pr-1"></div>
@@ -84,7 +82,6 @@
 
             <!-- 分頁 3：錢包、賞品發放、集點卡異動 -->
             <div id="tab-content-wallet" class="space-y-4 hidden">
-                <!-- 全局發送目標選擇提示 -->
                 <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-2xl">
                     <label class="text-xs font-bold text-indigo-900 block mb-1">🎯 當前操作目標會員</label>
                     <select id="admin-target-phone" onchange="syncSelectedMember(this.value)" class="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 outline-none"></select>
@@ -108,14 +105,30 @@
                     </div>
                 </div>
 
-                <!-- 發放賞品 -->
+                <!-- 發放賞品 (含回收換儲值金選項) -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 class="text-xs font-bold text-slate-800 mb-2.5">🎁 發放賞品至會員賞品櫃</h3>
-                    <div class="space-y-2.5">
+                    <div class="space-y-3">
                         <div>
                             <label class="text-[11px] text-slate-500">賞品名稱</label>
-                            <input type="text" id="admin-prize-name" placeholder="例如: SP賞 - 終極限定公仔" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                            <input type="text" id="admin-prize-name" placeholder="例如: A賞 - 終極限定公仔" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
+
+                        <!-- 回收設定選項 -->
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-slate-700">允許會員回收換儲值金？</label>
+                                <select id="admin-prize-recyclable" onchange="toggleRecycleInput(this.value)" class="px-2 py-1 bg-white border rounded-lg text-xs font-bold outline-none">
+                                    <option value="false">❌ 不可回收</option>
+                                    <option value="true">✅ 允許回收</option>
+                                </select>
+                            </div>
+                            <div id="recycle-amount-box" class="hidden">
+                                <label class="text-[11px] text-slate-500">可回收折換儲值金額 (NT$)</label>
+                                <input type="number" id="admin-prize-recycle-value" placeholder="例如: 300" value="0" class="w-full mt-1 px-3 py-1.5 bg-white border rounded-lg text-xs outline-none font-bold text-emerald-600">
+                            </div>
+                        </div>
+
                         <button onclick="adminIssuePrize()" class="w-full bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">直接發放賞品</button>
                     </div>
                 </div>
@@ -135,20 +148,17 @@
 
             <!-- 分頁 4：優惠券與集字卡發放專區 -->
             <div id="tab-content-marketing" class="space-y-4 hidden">
-                <!-- 全局發送目標選擇 -->
                 <div class="bg-purple-50 border border-purple-100 p-3 rounded-2xl">
                     <label class="text-xs font-bold text-purple-900 block mb-1">🎯 當前派發目標會員</label>
                     <select id="admin-marketing-target-phone" onchange="syncSelectedMember(this.value)" class="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-sm font-bold text-purple-900 outline-none"></select>
                 </div>
 
-                <!-- 一鍵派發全體折價券 -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
                     <div class="text-xs font-bold text-slate-800">⚡ 全體發送新會員折價券</div>
                     <p class="text-[11px] text-slate-400">點擊將發送「新會員好禮-30折價券 (WELCOME30)」給資料庫中全體會員。</p>
                     <button onclick="adminBatchIssueWelcomeCoupon()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:opacity-95 transition">⚡ 一鍵發送給所有會員</button>
                 </div>
 
-                <!-- 單獨發券 -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
                     <div class="text-xs font-bold text-slate-800">🎟️ 單獨派發優惠券</div>
                     <div>
@@ -168,7 +178,6 @@
                     <button onclick="adminIssueCoupon()" class="w-full bg-purple-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-purple-700 transition">派發優惠券</button>
                 </div>
 
-                <!-- 發放集字卡 -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
                     <div class="text-xs font-bold text-slate-800">🔤 發放集字卡專區</div>
                     <div class="grid grid-cols-2 gap-2">
@@ -218,7 +227,6 @@
         let currentlySelectedPhone = null;
         let activeAdminTab = 'members';
 
-        // 切換後台分頁
         function switchAdminTab(tabName) {
             activeAdminTab = tabName;
             const tabs = ['members', 'shipping', 'wallet', 'marketing'];
@@ -234,6 +242,15 @@
                     content.classList.add('hidden');
                 }
             });
+        }
+
+        function toggleRecycleInput(val) {
+            const box = document.getElementById('recycle-amount-box');
+            if (val === 'true') {
+                box.classList.remove('hidden');
+            } else {
+                box.classList.add('hidden');
+            }
         }
 
         async function loadAdminData() {
@@ -275,10 +292,10 @@
             allMembers.forEach(u => {
                 const userPrizes = u.prizes || [];
                 userPrizes.forEach((p, pIdx) => {
-                    const isShipped = p.status === 'shipping' || p.status === 'shipped';
+                    const isDone = p.status === 'shipping' || p.status === 'shipped' || p.status === 'recycled';
                     const hasShipping = !!p.shippingInfo;
 
-                    if (!isShipped) {
+                    if (!isDone) {
                         pendingCount++;
                         pendingHtml += `
                             <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-2 text-xs">
@@ -286,6 +303,7 @@
                                     <div>
                                         <div class="font-bold text-slate-800 text-sm">${p.name}</div>
                                         <div class="text-[11px] text-slate-500 mt-0.5">會員: ${u.name} (${u.phone})</div>
+                                        ${p.recyclable ? `<span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded mt-1 inline-block">允許回收：$${p.recycleValue}</span>` : ''}
                                     </div>
                                     <div>
                                         <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] bg-amber-500 text-white hover:bg-amber-600 transition shadow-sm">
@@ -296,7 +314,8 @@
 
                                 ${hasShipping ? `
                                     <div class="bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100 text-[11px] text-slate-700">
-                                        <span class="font-bold text-indigo-700">【會員轉單物流】</span> 方式：${p.shippingInfo.method}<br>${p.shippingInfo.method === '賣貨便' ? `單號: <span class="font-mono font-bold text-slate-900">${p.shippingInfo.code}</span>` : ''}
+                                        <span class="font-bold text-indigo-700">【會員轉單物流】</span> 方式：${p.shippingInfo.method}<br>
+                                        ${p.shippingInfo.method === '賣貨便' ? `單號: <span class="font-mono font-bold text-slate-900">${p.shippingInfo.code}</span>` : ''}
                                         ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 門市: ${p.shippingInfo.branch}` : ''}
                                         ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 地址: ${p.shippingInfo.address}` : ''}
                                     </div>
@@ -309,7 +328,7 @@
                             <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs opacity-75">
                                 <div>
                                     <div class="font-bold text-slate-700">${p.name}</div>
-                                    <div class="text-[10px] text-slate-400">會員: ${u.name} (${u.phone})</div>
+                                    <div class="text-[10px] text-slate-400">會員: ${u.name} (${u.phone}) | 狀態: ${p.status === 'recycled' ? '♻️ 已回收' : '📦 已出貨'}</div>
                                 </div>
                                 <div>
                                     <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-2.5 py-1 rounded-lg text-[10px] bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
@@ -326,9 +345,8 @@
             document.getElementById('shipped-count-badge').innerText = `${shippedCount} 件`;
 
             pendingContainer.innerHTML = pendingCount > 0 ? pendingHtml : `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50/50 rounded-xl">尚無待寄送賞品</p>`;
-            shippedContainer.innerHTML = shippedCount > 0 ? shippedHtml : `<p class="text-xs text-slate-400 text-center py-3">無歷史出貨紀錄</p>`;
+            shippedContainer.innerHTML = shippedCount > 0 ? shippedHtml : `<p class="text-xs text-slate-400 text-center py-3">無歷史紀錄</p>`;
 
-            // 更新下拉選單
             const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
             
             document.getElementById('admin-target-phone').innerHTML = optionsHtml;
@@ -342,7 +360,6 @@
             }
         }
 
-        // 同步所有分頁中的下拉選單
         function syncSelectedMember(phone) {
             currentlySelectedPhone = phone;
             const targetSel = document.getElementById('admin-target-phone');
@@ -351,7 +368,39 @@
             if (mktSel) mktSel.value = phone;
         }
 
-        // 發放字卡
+        // 發放賞品 (包含回收設定)
+        async function adminIssuePrize() {
+            const phone = currentlySelectedPhone;
+            const prizeName = document.getElementById('admin-prize-name').value.trim();
+            const recyclable = document.getElementById('admin-prize-recyclable').value === 'true';
+            const recycleValue = parseInt(document.getElementById('admin-prize-recycle-value').value) || 0;
+
+            if (!prizeName) { alert('請輸入賞品名稱'); return; }
+
+            const user = allMembers.find(u => u.phone === phone);
+            if (!user) return;
+
+            if (!user.prizes) user.prizes = [];
+            user.prizes.push({
+                id: Date.now(),
+                name: prizeName,
+                status: 'normal',
+                time: new Date().toLocaleDateString(),
+                recyclable: recyclable,
+                recycleValue: recyclable ? recycleValue : 0
+            });
+
+            await _supabase.from('members').update({ prizes: user.prizes }).eq('phone', phone);
+            
+            document.getElementById('admin-prize-name').value = '';
+            document.getElementById('admin-prize-recycle-value').value = '0';
+            document.getElementById('admin-prize-recyclable').value = 'false';
+            toggleRecycleInput('false');
+
+            await loadAdminData();
+            alert('賞品已成功發放！');
+        }
+
         async function adminIssueCard() {
             const phone = currentlySelectedPhone;
             const char = document.getElementById('admin-card-char').value.trim();
@@ -510,7 +559,7 @@
                         ${Object.keys(cards).length === 0 ? '<p class="text-[11px] text-slate-400 py-1">目前無任何字卡</p>' : ''}
                         ${Object.entries(cards).map(([char, qty]) => qty > 0 ? `
                             <span class="bg-pink-100 text-pink-700 text-[11px] px-2.5 py-1 rounded-xl font-bold border border-pink-200">
-                                ${char} ×${qty}
+                                ${char} × ${qty}
                             </span>
                         ` : '').join('')}
                     </div>
@@ -525,14 +574,15 @@
                     <div class="space-y-1.5">
                         ${prizes.map(p => {
                             const isShipped = p.status === 'shipping' || p.status === 'shipped';
+                            const isRecycled = p.status === 'recycled';
                             return `
                                 <div class="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
                                     <div>
                                         <div class="font-bold text-slate-800">${p.name}</div>
-                                        <div class="text-[9px] text-slate-400">${p.time}</div>
+                                        <div class="text-[9px] text-slate-400">${p.time} ${p.recyclable ? `| 可回收: $${p.recycleValue}` : ''}</div>
                                     </div>
-                                    <span class="px-2 py-0.5 rounded font-bold ${isShipped ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">
-                                        ${isShipped ? '已寄送' : (p.shippingInfo ? '已申請轉單' : '未寄送')}
+                                    <span class="px-2 py-0.5 rounded font-bold ${isRecycled ? 'bg-amber-100 text-amber-700' : (isShipped ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600')}">
+                                        ${isRecycled ? '已回收' : (isShipped ? '已寄送' : (p.shippingInfo ? '已轉單' : '未寄送'))}
                                     </span>
                                 </div>
                             `;
@@ -551,9 +601,9 @@
                             <div class="bg-white p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
                                 <div>
                                     <div class="font-bold text-slate-800">${c.title}</div>
-                                    <div class="text-[9px] text-slate-400">代碼: ${c.code} \vert{} 期限: ${c.expire}</div>
+                                    <div class="text-[9px] text-slate-400">代碼: ${c.code} | 期限: ${c.expire}</div>
                                 </div>
-                                <button onclick="toggleCouponStatus('${u.phone}',${c.id})" class="px-2.5 py-1 rounded-lg font-bold transition ${c.status === 'unused' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
+                                <button onclick="toggleCouponStatus('${u.phone}', ${c.id})" class="px-2.5 py-1 rounded-lg font-bold transition ${c.status === 'unused' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
                                     ${c.status === 'unused' ? '✓ 點擊核銷' : '↺ 取消核銷'}
                                 </button>
                             </div>
@@ -645,22 +695,6 @@
             alert('加扣款成功！');
         }
 
-        async function adminIssuePrize() {
-            const phone = currentlySelectedPhone;
-            const prizeName = document.getElementById('admin-prize-name').value.trim();
-            if (!prizeName) { alert('請輸入賞品名稱'); return; }
-
-            const user = allMembers.find(u => u.phone === phone);
-            if (!user) return;
-
-            if (!user.prizes) user.prizes = [];
-            user.prizes.push({ id: Date.now(), name: prizeName, status: 'normal', time: new Date().toLocaleDateString() });
-
-            await _supabase.from('members').update({ prizes: user.prizes }).eq('phone', phone);
-            await loadAdminData();
-            alert('賞品已發放！');
-        }
-
         async function adminAdjustPoints() {
             const phone = currentlySelectedPhone;
             const val = parseInt(document.getElementById('admin-point-val').value);
@@ -680,7 +714,7 @@
             if (!user || !user.prizes[prizeIdx]) return;
 
             const currentStatus = user.prizes[prizeIdx].status;
-            user.prizes[prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped') ? 'normal' : 'shipped';
+            user.prizes[prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped' || currentStatus === 'recycled') ? 'normal' : 'shipped';
 
             await _supabase.from('members').update({ prizes: user.prizes }).eq('phone', phone);
             await loadAdminData();
