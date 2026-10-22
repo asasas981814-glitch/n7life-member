@@ -289,7 +289,7 @@
             render();
         }
 
-        let activeTab = 'events';
+        let activeTab = 'prizes';
 
         function renderMemberDashboard() {
             const user = currentMemberData;
@@ -298,8 +298,8 @@
             const coupons = user.coupons || [];
             const cards = user.cards || {};
 
-            const pendingPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status !== 'shipped' && p.status !== 'shipping');
-            const historyPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status === 'shipped' || p.status === 'shipping');
+            const pendingPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status !== 'shipped' && p.status !== 'shipping' && p.status !== 'recycled');
+            const historyPrizes = prizes.map((p, idx) => ({ ...p, originalIndex: idx })).filter(p => p.status === 'shipped' || p.status === 'shipping' || p.status === 'recycled');
 
             return `
                 <div class="bg-gradient-to-r from-purple-900/60 via-indigo-900/60 to-slate-900/80 p-5 rounded-b-3xl border-b border-purple-500/20 shadow-lg">
@@ -358,7 +358,6 @@
             render();
         }
 
-        // 動態集字大挑戰
         function renderEventsTab(cards) {
             const cardEntries = Object.entries(cards).filter(([_, qty]) => qty > 0);
             const totalTypes = cardEntries.length;
@@ -376,7 +375,6 @@
                         </div>
                         <p class="text-xs text-indigo-200/80 mb-4">收集指定字卡組合，集齊即可向官方人員申請兌換大獎！</p>
 
-                        <!-- 字卡統計 -->
                         <div class="bg-black/30 p-3 rounded-2xl border border-white/10 mb-4 flex justify-around text-center">
                             <div>
                                 <div class="text-[10px] text-purple-300">收集種類</div>
@@ -389,7 +387,6 @@
                             </div>
                         </div>
 
-                        <!-- 動態展示會員目前擁有的字卡 -->
                         <div class="grid grid-cols-3 gap-2.5">
                             ${totalTypes === 0 ? '<div class="col-span-3 text-center py-6 text-xs text-slate-400 bg-white/5 rounded-2xl border border-white/5">目前尚未獲得任何字卡，敬請期待活動發放！</div>' : ''}
                             ${cardEntries.map(([char, qty]) => `
@@ -438,6 +435,8 @@
                             ${pendingPrizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-4 bg-white/5 rounded-2xl">目前無未寄送的賞品</p>' : ''}
                             ${pendingPrizes.map((p) => {
                                 const hasShipping = !!p.shippingInfo;
+                                const isRecyclable = p.recyclable && p.recycleValue > 0;
+
                                 return `
                                     <div class="bg-white/5 p-3.5 rounded-2xl border border-white/5 flex flex-col gap-2.5">
                                         <div class="flex justify-between items-start">
@@ -462,7 +461,13 @@
                                             </div>
                                         ` : ''}
 
-                                        <div class="flex justify-end gap-2 pt-1">
+                                        <div class="flex justify-end items-center gap-2 pt-1 border-t border-white/5">
+                                            ${isRecyclable ? `
+                                                <button onclick="recyclePrize(${p.originalIndex}, '${p.name.replace(/'/g, "\\'")}', ${p.recycleValue})" class="bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1 border border-emerald-400/30">
+                                                    ♻️ 回收折現 $${p.recycleValue}
+                                                </button>
+                                            ` : ''}
+
                                             <button onclick="openShippingModal(${p.originalIndex}, '${p.name.replace(/'/g, "\\'")}')" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold shadow-md shadow-purple-500/20 transition">
                                                 ${hasShipping ? '修改轉單資訊' : '📦 申請轉單'}
                                             </button>
@@ -475,19 +480,19 @@
 
                     <div class="pt-2 border-t border-white/10">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex justify-between items-center">
-                            <span>🚚 歷史寄送紀錄</span>
+                            <span>🚚 歷史紀錄 (已寄送 / 已回收)</span>
                             <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-normal">${historyPrizes.length} 件</span>
                         </h3>
                         <div class="space-y-2">
-                            ${historyPrizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-3">尚無已寄送的歷史紀錄</p>' : ''}
+                            ${historyPrizes.length === 0 ? '<p class="text-xs text-slate-500 text-center py-3">尚無歷史紀錄</p>' : ''}
                             ${historyPrizes.map((p) => `
                                 <div class="bg-white/5 p-3 rounded-2xl border border-white/5 opacity-70 flex justify-between items-center">
                                     <div>
                                         <div class="text-xs font-bold text-slate-300">${p.name}</div>
                                         <div class="text-[10px] text-slate-400 mt-0.5">獲得時間: ${p.time}</div>
                                     </div>
-                                    <span class="text-[11px] bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-xl font-bold border border-emerald-500/30">
-                                        📦 已出貨
+                                    <span class="text-[11px] px-2.5 py-1 rounded-xl font-bold border ${p.status === 'recycled' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'}">
+                                        ${p.status === 'recycled' ? `♻️ 已回收 (+$${p.recycleValue || 0})` : '📦 已出貨'}
                                     </span>
                                 </div>
                             `).join('')}
@@ -495,6 +500,51 @@
                     </div>
                 </div>
             `;
+        }
+
+        // 賞品回收換儲值金邏輯 (含二次確認)
+        async function recyclePrize(prizeIdx, prizeName, recycleValue) {
+            const confirmRecycle = confirm(`⚠️ 確定要回收賞品 「${prizeName}」 嗎？\n\n回收後該賞品將無法寄送，並將自動兌換 NT$ ${recycleValue} 儲值金新增至您的錢包！`);
+            if (!confirmRecycle) return;
+
+            const user = currentMemberData;
+            const prizes = user.prizes || [];
+            const wallets = user.wallets || [];
+
+            if (!prizes[prizeIdx]) {
+                alert('賞品不存在或已被處理');
+                return;
+            }
+
+            // 標記為已回收
+            prizes[prizeIdx].status = 'recycled';
+
+            // 加款至錢包與新增交易紀錄
+            user.balance = (user.balance || 0) + recycleValue;
+            wallets.push({
+                type: 'topup',
+                amount: recycleValue,
+                desc: `[賞品回收] ${prizeName}`,
+                time: new Date().toLocaleString()
+            });
+
+            // 更新 Supabase
+            const { error } = await _supabase
+                .from('members')
+                .update({
+                    prizes: prizes,
+                    balance: user.balance,
+                    wallets: wallets
+                })
+                .eq('phone', currentUserPhone);
+
+            if (error) {
+                alert('回收失敗，請稍後再試');
+                return;
+            }
+
+            alert(`🎉 回收成功！成功兌換 NT$ ${recycleValue} 儲值金，已存入您的錢包餘額！`);
+            render();
         }
 
         function openShippingModal(prizeIdx, prizeName) {
