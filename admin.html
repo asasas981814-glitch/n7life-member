@@ -66,7 +66,7 @@
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <div>
                         <h3 class="text-sm font-bold text-slate-800 mb-1 flex justify-between items-center">
-                            <span>⏳ 待出貨 / 待處理賞品</span>
+                            <span>⏳ 待出貨 / 待處理賞品 (最新到最舊)</span>
                             <span id="pending-count-badge" class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">0 件</span>
                         </h3>
                         <p class="text-[11px] text-slate-400 mb-2.5">點擊「完成寄送」將可把賞品歸類至歷史紀錄。</p>
@@ -75,7 +75,7 @@
 
                     <div class="pt-3 border-t border-slate-100">
                         <h3 class="text-xs font-bold text-slate-500 mb-2 flex justify-between items-center">
-                            <span>📦 歷史紀錄 (已寄送 / 已回收)</span>
+                            <span>📦 歷史紀錄 (已寄送 / 已回收 - 最新到最舊)</span>
                             <span id="shipped-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">0 件</span>
                         </h3>
                         <div id="admin-shipped-prizes" class="space-y-2 max-h-[22vh] overflow-y-auto pr-1"></div>
@@ -245,7 +245,6 @@
                     content.classList.add('hidden');
                 }
             });
-            // 每次切換分頁時自動重新整理雲端資料，確保數據同步
             loadAdminData();
         }
 
@@ -289,67 +288,90 @@
             const pendingContainer = document.getElementById('admin-pending-prizes');
             const shippedContainer = document.getElementById('admin-shipped-prizes');
             
-            let pendingHtml = '';
-            let shippedHtml = '';
-            let pendingCount = 0;
-            let shippedCount = 0;
+            let pendingPrizesList = [];
+            let shippedPrizesList = [];
 
+            // 彙整所有會員的賞品
             allMembers.forEach(u => {
                 const userPrizes = u.prizes || [];
                 userPrizes.forEach((p, pIdx) => {
+                    const prizeItem = {
+                        ...p,
+                        userPhone: u.phone,
+                        userName: u.name,
+                        pIdx: pIdx,
+                        // 解析獲得時間以供排序 (若無時間則預設 0)
+                        timestamp: p.id || (p.time ? new Date(p.time).getTime() : 0)
+                    };
+
                     const isDone = p.status === 'shipping' || p.status === 'shipped' || p.status === 'recycled';
-                    const hasShipping = !!p.shippingInfo;
-
                     if (!isDone) {
-                        pendingCount++;
-                        pendingHtml += `
-                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-2 text-xs">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <div class="font-bold text-slate-800 text-sm">${p.name}</div>
-                                        <div class="text-[11px] text-slate-500 mt-0.5">會員: ${u.name} (${u.phone})</div>
-                                        ${p.recyclable ? `<span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded mt-1 inline-block">可回收：$${p.recycleValue}</span>` : ''}
-                                    </div>
-                                    <div>
-                                        <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] bg-amber-500 text-white hover:bg-amber-600 transition shadow-sm">
-                                            🚚 完成寄送
-                                        </button>
-                                    </div>
-                                </div>
-
-                                ${hasShipping ? `
-                                    <div class="bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100 text-[11px] text-slate-700">
-                                        <span class="font-bold text-indigo-700">【會員轉單物流】</span> 方式：${p.shippingInfo.method}<br>${p.shippingInfo.method === '賣貨便' ? `單號: <span class="font-mono font-bold text-slate-900">${p.shippingInfo.code}</span>` : ''}
-                                        ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 門市: ${p.shippingInfo.branch}` : ''}
-                                        ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 地址: ${p.shippingInfo.address}` : ''}
-                                    </div>
-                                ` : '<div class="text-[10px] text-slate-400 italic">會員尚未申請轉單</div>'}
-                            </div>
-                        `;
+                        pendingPrizesList.push(prizeItem);
                     } else {
-                        shippedCount++;
-                        shippedHtml += `
-                            <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs opacity-75">
-                                <div>
-                                    <div class="font-bold text-slate-700">${p.name}</div>
-                                    <div class="text-[10px] text-slate-400">會員: ${u.name} (${u.phone}) | 狀態: ${p.status === 'recycled' ? `♻️ 已回收 (+$${p.recycleValue || 0})` : '📦 已出貨'}</div>
-                                </div>
-                                <div>
-                                    <button onclick="togglePrizeStatus('${u.phone}', ${pIdx})" class="px-2.5 py-1 rounded-lg text-[10px] bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
-                                        ↺ 復原狀態
-                                    </button>
-                                </div>
-                            </div>
-                        `;
+                        shippedPrizesList.push(prizeItem);
                     }
                 });
             });
 
-            document.getElementById('pending-count-badge').innerText = `${pendingCount} 件`;
-            document.getElementById('shipped-count-badge').innerText = `${shippedCount} 件`;
+            // 依獲得/建立時間進行降序排序 (最新到最舊)
+            pendingPrizesList.sort((a, b) => b.timestamp - a.timestamp);
+            shippedPrizesList.sort((a, b) => b.timestamp - a.timestamp);
 
-            pendingContainer.innerHTML = pendingCount > 0 ? pendingHtml : `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50/50 rounded-xl">尚無待處理賞品</p>`;
-            shippedContainer.innerHTML = shippedCount > 0 ? shippedHtml : `<p class="text-xs text-slate-400 text-center py-3">無歷史紀錄</p>`;
+            document.getElementById('pending-count-badge').innerText = `${pendingPrizesList.length} 件`;
+            document.getElementById('shipped-count-badge').innerText = `${shippedPrizesList.length} 件`;
+
+            // 渲染待出貨清單
+            if (pendingPrizesList.length === 0) {
+                pendingContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50/50 rounded-xl">尚無待處理賞品</p>`;
+            } else {
+                pendingContainer.innerHTML = pendingPrizesList.map(p => {
+                    const hasShipping = !!p.shippingInfo;
+                    return `
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-2 text-xs">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-bold text-slate-800 text-sm">${p.name}</div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">會員: ${p.userName} (${p.userPhone}) | 時間: ${p.time || '未知'}</div>
+                                    ${p.recyclable ? `<span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded mt-1 inline-block">可回收：$${p.recycleValue}</span>` : ''}
+                                </div>
+                                <div>
+                                    <button onclick="togglePrizeStatus('${p.userPhone}', ${p.pIdx})" class="px-3 py-1.5 rounded-xl font-bold text-[11px] bg-amber-500 text-white hover:bg-amber-600 transition shadow-sm">
+                                        🚚 完成寄送
+                                    </button>
+                                </div>
+                            </div>
+
+                            ${hasShipping ? `
+                                <div class="bg-indigo-50/70 p-2.5 rounded-lg border border-indigo-100 text-[11px] text-slate-700">
+                                    <span class="font-bold text-indigo-700">【會員轉單物流】</span> 方式：${p.shippingInfo.method}<br>
+                                    ${p.shippingInfo.method === '賣貨便' ? `單號: <span class="font-mono font-bold text-slate-900">${p.shippingInfo.code}</span>` : ''}
+                                    ${p.shippingInfo.method === '店到店' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 門市: ${p.shippingInfo.branch}` : ''}
+                                    ${p.shippingInfo.method === '宅配' ? `收件人: ${p.shippingInfo.name} | 電話: ${p.shippingInfo.phone} | 地址: ${p.shippingInfo.address}` : ''}
+                                </div>
+                            ` : '<div class="text-[10px] text-slate-400 italic">會員尚未申請轉單</div>'}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 渲染歷史紀錄清單
+            if (shippedPrizesList.length === 0) {
+                shippedContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">無歷史紀錄</p>`;
+            } else {
+                shippedContainer.innerHTML = shippedPrizesList.map(p => `
+                    <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs opacity-75">
+                        <div>
+                            <div class="font-bold text-slate-700">${p.name}</div>
+                            <div class="text-[10px] text-slate-400">會員: ${p.userName} (${p.userPhone}) | 狀態: ${p.status === 'recycled' ? `♻️ 已回收 (+$${p.recycleValue || 0})` : '📦 已出貨'}</div>
+                        </div>
+                        <div>
+                            <button onclick="togglePrizeStatus('${p.userPhone}', ${p.pIdx})" class="px-2.5 py-1 rounded-lg text-[10px] bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
+                                ↺ 復原狀態
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
 
             const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
             
@@ -562,7 +584,7 @@
                         ${Object.keys(cards).length === 0 ? '<p class="text-[11px] text-slate-400 py-1">目前無任何字卡</p>' : ''}
                         ${Object.entries(cards).map(([char, qty]) => qty > 0 ? `
                             <span class="bg-pink-100 text-pink-700 text-[11px] px-2.5 py-1 rounded-xl font-bold border border-pink-200">
-                                ${char} ×${qty}
+                                ${char} × ${qty}
                             </span>
                         ` : '').join('')}
                     </div>
@@ -575,14 +597,14 @@
                     </h4>
                     ${prizes.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">目前無任何賞品</p>' : ''}
                     <div class="space-y-1.5">
-                        ${prizes.map(p => {
+                        ${prizes.slice().reverse().map(p => {
                             const isShipped = p.status === 'shipping' || p.status === 'shipped';
                             const isRecycled = p.status === 'recycled';
                             return `
                                 <div class="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
                                     <div>
                                         <div class="font-bold text-slate-800">${p.name}</div>
-                                        <div class="text-[9px] text-slate-400">${p.time}${p.recyclable ? `| 可回收: $${p.recycleValue}` : ''}</div>
+                                        <div class="text-[9px] text-slate-400">${p.time} ${p.recyclable ? `| 可回收: $${p.recycleValue}` : ''}</div>
                                     </div>
                                     <span class="px-2 py-0.5 rounded font-bold ${isRecycled ? 'bg-amber-100 text-amber-700' : (isShipped ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600')}">
                                         ${isRecycled ? `已回收 (+$${p.recycleValue || 0})` : (isShipped ? '已寄送' : (p.shippingInfo ? '已轉單' : '未寄送'))}
@@ -604,9 +626,9 @@
                             <div class="bg-white p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
                                 <div>
                                     <div class="font-bold text-slate-800">${c.title}</div>
-                                    <div class="text-[9px] text-slate-400">代碼: ${c.code} \vert{} 期限: ${c.expire}</div>
+                                    <div class="text-[9px] text-slate-400">代碼: ${c.code} | 期限: ${c.expire}</div>
                                 </div>
-                                <button onclick="toggleCouponStatus('${u.phone}',${c.id})" class="px-2.5 py-1 rounded-lg font-bold transition ${c.status === 'unused' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
+                                <button onclick="toggleCouponStatus('${u.phone}', ${c.id})" class="px-2.5 py-1 rounded-lg font-bold transition ${c.status === 'unused' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
                                     ${c.status === 'unused' ? '✓ 點擊核銷' : '↺ 取消核銷'}
                                 </button>
                             </div>
