@@ -135,7 +135,6 @@
 
         let currentUserPhone = localStorage.getItem('sys_current_user') || null;
         let currentMemberData = null;
-        let dailyTaskConfig = null; // 當前發布的每日任務
 
         async function loadUserData() {
             if (!currentUserPhone) return;
@@ -153,28 +152,7 @@
             }
         }
 
-        async function loadDailyTaskConfig() {
-            // 從系統全域帳號獲取當前發布的每日任務
-            const { data } = await _supabase
-                .from('members')
-                .select('daily_task')
-                .eq('phone', 'SYSTEM_CONFIG')
-                .maybeSingle();
-
-            if (data && data.daily_task) {
-                dailyTaskConfig = data.daily_task;
-            } else {
-                dailyTaskConfig = {
-                    title: '每日登入社群互動',
-                    desc: '在 LINE 社群發言一次並打卡即可完成任務',
-                    reward: 10,
-                    active: true
-                };
-            }
-        }
-
         async function render() {
-            await loadDailyTaskConfig();
             if (currentUserPhone) {
                 await loadUserData();
             }
@@ -297,7 +275,8 @@
                 prizes: [],
                 coupons: [{ id: Date.now(), title: '新會員好禮-30折價券', code: 'WELCOME30', status: 'unused', expire: '2026-12-31' }],
                 cards: {},
-                task_status: 'pending' // pending: 進行中, completed: 官方已確認發點
+                task_status: 'pending',
+                daily_task: { title: '每日登入社群互動', desc: '在 LINE 群組發言打卡', reward: 10 }
             };
 
             const { error } = await _supabase.from('members').insert([newMember]);
@@ -383,7 +362,8 @@
 
         function renderEventsTab(cards) {
             const user = currentMemberData;
-            const task = dailyTaskConfig || { title: '每日互動任務', desc: '完成指定任務可獲點數', reward: 10 };
+            // 優先讀取資料庫中該會員擁有的 daily_task，若無則給預設值
+            const task = user.daily_task || { title: '每日登入社群互動', desc: '在 LINE 群組發言打卡', reward: 10 };
             const isCompleted = user.task_status === 'completed';
 
             const cardEntries = Object.entries(cards).filter(([_, qty]) => qty > 0);
