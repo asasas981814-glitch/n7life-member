@@ -164,7 +164,7 @@
                     </div>
                     <div>
                         <label class="text-[11px] text-slate-500">任務詳細內容說明</label>
-                        <input type="text" id="admin-task-desc" placeholder="例如: 請在 LINE 群組公開分享抽賞截圖" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                        <input type="text" id="admin-task-desc" placeholder="例如: 請在 LINE 群組公開分享截圖" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                     </div>
                     <div>
                         <label class="text-[11px] text-slate-500">完成後獎勵點數 (Pts)</label>
@@ -247,7 +247,7 @@
         let allMembers = [];
         let currentlySelectedPhone = null;
         let activeAdminTab = 'members';
-        let currentTaskReward = 10; // 預設任務獎勵點數
+        let currentTaskReward = 10;
 
         function switchAdminTab(tabName) {
             activeAdminTab = tabName;
@@ -277,13 +277,23 @@
         }
 
         async function loadAdminData() {
-            // 載入全域任務點數設定
-            const { data: sysData } = await _supabase.from('members').select('daily_task').eq('phone', 'SYSTEM_CONFIG').maybeSingle();
+            // 嘗試載入全域任務設定
+            const { data: sysData } = await _supabase.from('members').select('*').eq('phone', 'SYSTEM_CONFIG').maybeSingle();
             if (sysData && sysData.daily_task) {
                 currentTaskReward = sysData.daily_task.reward || 10;
                 document.getElementById('admin-task-title').value = sysData.daily_task.title || '';
                 document.getElementById('admin-task-desc').value = sysData.daily_task.desc || '';
                 document.getElementById('admin-task-reward').value = currentTaskReward;
+            } else {
+                // 若尚無 SYSTEM_CONFIG 紀錄，先自動初始化建立一筆
+                await _supabase.from('members').upsert([{
+                    phone: 'SYSTEM_CONFIG',
+                    name: '全域系統設定',
+                    pwd: 'none',
+                    balance: 0,
+                    points: 0,
+                    daily_task: { title: '每日登入社群互動', desc: '在 LINE 群組發言打卡', reward: 10 }
+                }], { onConflict: 'phone' });
             }
 
             const { data, error } = await _supabase.from('members').select('*');
@@ -292,7 +302,6 @@
                 return;
             }
 
-            // 過濾掉全域設定帳號
             allMembers = (data || []).filter(u => u.phone !== 'SYSTEM_CONFIG');
 
             const memberListContainer = document.getElementById('member-list-container');
@@ -423,7 +432,7 @@
             }
         }
 
-        // 🎯 官方發布每日任務
+        // 🎯 官方發布每日任務 (使用 update 或 upsert 確保成功)
         async function adminPublishDailyTask() {
             const title = document.getElementById('admin-task-title').value.trim();
             const desc = document.getElementById('admin-task-desc').value.trim();
@@ -442,17 +451,24 @@
                 publishTime: new Date().toLocaleString()
             };
 
-            // 1. 寫入全域設定
+            // 使用 upsert 將設定寫入 SYSTEM_CONFIG
             const { error: sysErr } = await _supabase
                 .from('members')
-                .upsert([{ phone: 'SYSTEM_CONFIG', name: '全域設定', daily_task: taskConfig }], { onConflict: 'phone' });
+                .upsert([{ 
+                    phone: 'SYSTEM_CONFIG', 
+                    name: '全域系統設定', 
+                    pwd: 'none', 
+                    balance: 0, 
+                    points: 0, 
+                    daily_task: taskConfig 
+                }], { onConflict: 'phone' });
 
             if (sysErr) {
-                alert('發布任務失敗，請檢查資料庫！');
+                alert('發布任務失敗：' + sysErr.message);
                 return;
             }
 
-            // 2. 將所有會員的每日任務狀態重置為 pending (未完成)
+            // 重置全體會員的任務完成狀態
             for (let u of allMembers) {
                 await _supabase
                     .from('members')
@@ -460,11 +476,10 @@
                     .eq('phone', u.phone);
             }
 
-            alert(`🎉 成功發布新每日任務：「${title}」！已重置全體會員的完成狀態。`);
+            alert(`🎉 成功發布新每日任務：「${title}」！`);
             await loadAdminData();
         }
 
-        // 🎯 官方點擊幫會員完成任務並發放點數
         async function adminCompleteUserTask(phone, name) {
             const user = allMembers.find(u => u.phone === phone);
             if (!user) return;
@@ -730,7 +745,7 @@
             user.prizes[prizeIdx].status = (currentStatus === 'shipping' || currentStatus === 'shipped' || currentStatus === 'recycled') ? 'normal' : 'shipped';
 
             await _supabase.from('members').update({ prizes: user.prizes }).eq('phone', phone);
-            await loadAdminData();
+            loadAdminData();
         }
 
         if (localStorage.getItem('sys_admin_unlocked') === 'true') {
