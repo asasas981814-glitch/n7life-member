@@ -44,7 +44,7 @@
             <button onclick="switchAdminTab('members')" id="tab-btn-members" class="tab-btn flex-1 py-2 text-center rounded-xl tab-active">👥 會員</button>
             <button onclick="switchAdminTab('shipping')" id="tab-btn-shipping" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">📦 出貨</button>
             <button onclick="switchAdminTab('wallet')" id="tab-btn-wallet" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">💰 異動</button>
-            <button onclick="switchAdminTab('marketing')" id="tab-btn-marketing" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">🎟️ 券/卡</button>
+            <button onclick="switchAdminTab('marketing')" id="tab-btn-marketing" class="tab-btn flex-1 py-2 text-center rounded-xl tab-inactive">🎯 任務/券</button>
         </div>
 
         <div class="flex-1 p-4 overflow-y-auto bg-slate-50">
@@ -56,7 +56,7 @@
                         <h3 class="text-sm font-bold text-slate-800">📋 已註冊會員總清單</h3>
                         <span id="member-count-badge" class="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-full font-bold">共 0 人</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 mb-3">可點擊「🔍 詳細狀態」檢視會員的錢包、賞品、折價券與字卡背包狀況。</p>
+                    <p class="text-[11px] text-slate-400 mb-3">可點擊「🔍 詳細狀態」進行任務完成確認與檢視狀態。</p>
                     <div id="member-list-container" class="space-y-2 max-h-[62vh] overflow-y-auto pr-1"></div>
                 </div>
             </div>
@@ -75,7 +75,7 @@
 
                     <div class="pt-3 border-t border-slate-100">
                         <h3 class="text-xs font-bold text-slate-500 mb-2 flex justify-between items-center">
-                            <span>📦 歷史紀錄 (已寄送 / 已回收 - 最新到最舊)</span>
+                            <span>📦 歷史紀錄 (已寄送 / 已回收)</span>
                             <span id="shipped-count-badge" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">0 件</span>
                         </h3>
                         <div id="admin-shipped-prizes" class="space-y-2 max-h-[22vh] overflow-y-auto pr-1"></div>
@@ -83,7 +83,7 @@
                 </div>
             </div>
 
-            <!-- 分頁 3：錢包、賞品發放、集點卡異動 -->
+            <!-- 分頁 3：錢包、賞品發放、點數異動 -->
             <div id="tab-content-wallet" class="space-y-4 hidden">
                 <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-2xl">
                     <label class="text-xs font-bold text-indigo-900 block mb-1">🎯 當前操作目標會員</label>
@@ -108,7 +108,7 @@
                     </div>
                 </div>
 
-                <!-- 發放賞品 (含回收換儲值金選項) -->
+                <!-- 發放賞品 -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 class="text-xs font-bold text-slate-800 mb-2.5">🎁 發放賞品至會員賞品櫃</h3>
                     <div class="space-y-3">
@@ -117,7 +117,6 @@
                             <input type="text" id="admin-prize-name" placeholder="例如: A賞 - 終極限定公仔" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
 
-                        <!-- 回收設定選項 -->
                         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60 space-y-2">
                             <div class="flex items-center justify-between">
                                 <label class="text-xs font-bold text-slate-700">允許會員回收換儲值金？</label>
@@ -136,32 +135,51 @@
                     </div>
                 </div>
 
-                <!-- 集點卡加點 -->
+                <!-- 手動點數調整 -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="text-xs font-bold text-slate-800 mb-2.5">✦ 集點卡調整</h3>
+                    <h3 class="text-xs font-bold text-slate-800 mb-2.5">💎 點數手動調整</h3>
                     <div class="space-y-2.5">
                         <div>
-                            <label class="text-[11px] text-slate-500">調整點數 (+1 或 -1)</label>
-                            <input type="number" id="admin-point-val" value="1" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                            <label class="text-[11px] text-slate-500">調整點數數量 (+加點 / -扣點)</label>
+                            <input type="number" id="admin-point-val" value="10" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                         </div>
-                        <button onclick="adminAdjustPoints()" class="w-full bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition">調整集點卡點數</button>
+                        <button onclick="adminAdjustPoints()" class="w-full bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition">調整累積點數</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 分頁 4：優惠券與集字卡發放專區 -->
+            <!-- 分頁 4：發布每日任務、優惠券與集字卡專區 -->
             <div id="tab-content-marketing" class="space-y-4 hidden">
+                
+                <!-- 🎯 1. 發布每日任務介面 -->
+                <div class="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-indigo-900">🎯 發布全體每日任務</h3>
+                        <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">即時同步至全體會員</span>
+                    </div>
+                    
+                    <div>
+                        <label class="text-[11px] text-slate-500">任務標題 / 名稱</label>
+                        <input type="text" id="admin-task-title" placeholder="例如: 社群貼文分享與留言" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-500">任務詳細內容說明</label>
+                        <input type="text" id="admin-task-desc" placeholder="例如: 請在 LINE 群組公開分享抽賞截圖" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-500">完成後獎勵點數 (Pts)</label>
+                        <input type="number" id="admin-task-reward" placeholder="例如: 10" value="10" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none font-bold text-amber-600">
+                    </div>
+                    
+                    <button onclick="adminPublishDailyTask()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-md">🚀 發布新每日任務 (重置全體完成狀態)</button>
+                </div>
+
                 <div class="bg-purple-50 border border-purple-100 p-3 rounded-2xl">
                     <label class="text-xs font-bold text-purple-900 block mb-1">🎯 當前派發目標會員</label>
                     <select id="admin-marketing-target-phone" onchange="syncSelectedMember(this.value)" class="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-sm font-bold text-purple-900 outline-none"></select>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-                    <div class="text-xs font-bold text-slate-800">⚡ 全體發送新會員折價券</div>
-                    <p class="text-[11px] text-slate-400">點擊將發送「新會員好禮-30折價券 (WELCOME30)」給資料庫中全體會員。</p>
-                    <button onclick="adminBatchIssueWelcomeCoupon()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2 rounded-xl text-xs font-bold shadow-md hover:opacity-95 transition">⚡ 一鍵發送給所有會員</button>
-                </div>
-
+                <!-- 🎟️ 優惠券與字卡 -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
                     <div class="text-xs font-bold text-slate-800">🎟️ 單獨派發優惠券</div>
                     <div>
@@ -229,6 +247,7 @@
         let allMembers = [];
         let currentlySelectedPhone = null;
         let activeAdminTab = 'members';
+        let currentTaskReward = 10; // 預設任務獎勵點數
 
         function switchAdminTab(tabName) {
             activeAdminTab = tabName;
@@ -258,12 +277,23 @@
         }
 
         async function loadAdminData() {
+            // 載入全域任務點數設定
+            const { data: sysData } = await _supabase.from('members').select('daily_task').eq('phone', 'SYSTEM_CONFIG').maybeSingle();
+            if (sysData && sysData.daily_task) {
+                currentTaskReward = sysData.daily_task.reward || 10;
+                document.getElementById('admin-task-title').value = sysData.daily_task.title || '';
+                document.getElementById('admin-task-desc').value = sysData.daily_task.desc || '';
+                document.getElementById('admin-task-reward').value = currentTaskReward;
+            }
+
             const { data, error } = await _supabase.from('members').select('*');
             if (error) {
                 alert('無法載入雲端資料');
                 return;
             }
-            allMembers = data || [];
+
+            // 過濾掉全域設定帳號
+            allMembers = (data || []).filter(u => u.phone !== 'SYSTEM_CONFIG');
 
             const memberListContainer = document.getElementById('member-list-container');
             document.getElementById('member-count-badge').innerText = `共 ${allMembers.length} 人`;
@@ -271,18 +301,30 @@
             if (allMembers.length === 0) {
                 memberListContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">目前尚無會員註冊</p>`;
             } else {
-                memberListContainer.innerHTML = allMembers.map(u => `
-                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
-                        <div>
-                            <div class="font-bold text-slate-800">${u.name} <span class="text-slate-500 font-normal">(${u.phone})</span></div>
-                            <div class="text-[10px] text-slate-400 mt-0.5">餘額: <span class="text-indigo-600 font-bold">$${u.balance.toLocaleString()}</span> | 點數: <span class="text-amber-600">${u.points}點</span></div>
+                memberListContainer.innerHTML = allMembers.map(u => {
+                    const isCompleted = u.task_status === 'completed';
+                    return `
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center text-xs">
+                            <div>
+                                <div class="font-bold text-slate-800">${u.name} <span class="text-slate-500 font-normal">(${u.phone})</span></div>
+                                <div class="text-[10px] text-slate-400 mt-0.5">
+                                    餘額: <span class="text-indigo-600 font-bold">$${u.balance.toLocaleString()}</span> | 
+                                    點數: <span class="text-amber-600 font-bold">${u.points || 0} Pts</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                ${isCompleted ? `
+                                    <span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg font-bold">✅ 任務已完成</span>
+                                ` : `
+                                    <button onclick="adminCompleteUserTask('${u.phone}', '${u.name}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-xl font-bold transition text-[11px] shadow-sm">
+                                        🎯 完成任務 (+${currentTaskReward}Pts)
+                                    </button>
+                                `}
+                                <button onclick="viewMemberDetail('${u.phone}')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2.5 py-1.5 rounded-xl font-bold transition text-[11px]">🔍 詳細</button>
+                            </div>
                         </div>
-                        <div class="flex gap-1.5">
-                            <button onclick="viewMemberDetail('${u.phone}')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2.5 py-1.5 rounded-xl font-bold transition text-[11px]">🔍 詳細狀態</button>
-                            <button onclick="deleteMember('${u.phone}', '${u.name}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1.5 rounded-xl font-bold transition text-[11px]">刪除</button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
 
             const pendingContainer = document.getElementById('admin-pending-prizes');
@@ -291,7 +333,6 @@
             let pendingPrizesList = [];
             let shippedPrizesList = [];
 
-            // 彙整所有會員的賞品
             allMembers.forEach(u => {
                 const userPrizes = u.prizes || [];
                 userPrizes.forEach((p, pIdx) => {
@@ -300,7 +341,6 @@
                         userPhone: u.phone,
                         userName: u.name,
                         pIdx: pIdx,
-                        // 解析獲得時間以供排序 (若無時間則預設 0)
                         timestamp: p.id || (p.time ? new Date(p.time).getTime() : 0)
                     };
 
@@ -313,14 +353,12 @@
                 });
             });
 
-            // 依獲得/建立時間進行降序排序 (最新到最舊)
             pendingPrizesList.sort((a, b) => b.timestamp - a.timestamp);
             shippedPrizesList.sort((a, b) => b.timestamp - a.timestamp);
 
             document.getElementById('pending-count-badge').innerText = `${pendingPrizesList.length} 件`;
             document.getElementById('shipped-count-badge').innerText = `${shippedPrizesList.length} 件`;
 
-            // 渲染待出貨清單
             if (pendingPrizesList.length === 0) {
                 pendingContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50/50 rounded-xl">尚無待處理賞品</p>`;
             } else {
@@ -331,7 +369,7 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="font-bold text-slate-800 text-sm">${p.name}</div>
-                                    <div class="text-[11px] text-slate-500 mt-0.5">會員: ${p.userName} (${p.userPhone}) | 時間: ${p.time || '未知'}</div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">會員: ${p.userName} (${p.userPhone})</div>
                                     ${p.recyclable ? `<span class="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded mt-1 inline-block">可回收：$${p.recycleValue}</span>` : ''}
                                 </div>
                                 <div>
@@ -354,7 +392,6 @@
                 }).join('');
             }
 
-            // 渲染歷史紀錄清單
             if (shippedPrizesList.length === 0) {
                 shippedContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">無歷史紀錄</p>`;
             } else {
@@ -373,7 +410,7 @@
                 `).join('');
             }
 
-            const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points}點</option>`).join('');
+            const optionsHtml = allMembers.map(u => `<option value="${u.phone}">${u.name} (${u.phone}) - 餘額: $${u.balance} / 點數: ${u.points || 0}Pts</option>`).join('');
             
             document.getElementById('admin-target-phone').innerHTML = optionsHtml;
             document.getElementById('admin-marketing-target-phone').innerHTML = optionsHtml;
@@ -384,6 +421,74 @@
                 currentlySelectedPhone = allMembers[0].phone;
                 syncSelectedMember(currentlySelectedPhone);
             }
+        }
+
+        // 🎯 官方發布每日任務
+        async function adminPublishDailyTask() {
+            const title = document.getElementById('admin-task-title').value.trim();
+            const desc = document.getElementById('admin-task-desc').value.trim();
+            const reward = parseInt(document.getElementById('admin-task-reward').value) || 10;
+
+            if (!title || !desc) {
+                alert('請完整輸入任務標題與說明內容！');
+                return;
+            }
+
+            const taskConfig = {
+                title: title,
+                desc: desc,
+                reward: reward,
+                active: true,
+                publishTime: new Date().toLocaleString()
+            };
+
+            // 1. 寫入全域設定
+            const { error: sysErr } = await _supabase
+                .from('members')
+                .upsert([{ phone: 'SYSTEM_CONFIG', name: '全域設定', daily_task: taskConfig }], { onConflict: 'phone' });
+
+            if (sysErr) {
+                alert('發布任務失敗，請檢查資料庫！');
+                return;
+            }
+
+            // 2. 將所有會員的每日任務狀態重置為 pending (未完成)
+            for (let u of allMembers) {
+                await _supabase
+                    .from('members')
+                    .update({ task_status: 'pending' })
+                    .eq('phone', u.phone);
+            }
+
+            alert(`🎉 成功發布新每日任務：「${title}」！已重置全體會員的完成狀態。`);
+            await loadAdminData();
+        }
+
+        // 🎯 官方點擊幫會員完成任務並發放點數
+        async function adminCompleteUserTask(phone, name) {
+            const user = allMembers.find(u => u.phone === phone);
+            if (!user) return;
+
+            const confirmTask = confirm(`確定幫會員 「${name}」 確認完成每日任務，並自動發放 ${currentTaskReward} 點數嗎？`);
+            if (!confirmTask) return;
+
+            const newPoints = (user.points || 0) + currentTaskReward;
+
+            const { error } = await _supabase
+                .from('members')
+                .update({
+                    points: newPoints,
+                    task_status: 'completed'
+                })
+                .eq('phone', phone);
+
+            if (error) {
+                alert('點數發放失敗！');
+                return;
+            }
+
+            alert(`🎉 已成功確認會員 「${name}」 完成任務，並派發 ${currentTaskReward} 點數！`);
+            await loadAdminData();
         }
 
         function syncSelectedMember(phone) {
@@ -449,42 +554,10 @@
                 .update({ cards: user.cards })
                 .eq('phone', phone);
 
-            if (error) {
-                alert('字卡發放失敗！');
-                return;
-            }
+            if (error) { alert('字卡發放失敗！'); return; }
 
             alert(`成功發放字卡 「${char}」 × ${qty} 給會員！`);
             document.getElementById('admin-card-char').value = '';
-            await loadAdminData();
-        }
-
-        async function adminBatchIssueWelcomeCoupon() {
-            if (!confirm(`確定要一鍵派發「新會員好禮-30折價券 (WELCOME30)」給全體 ${allMembers.length} 位會員嗎？`)) {
-                return;
-            }
-
-            const newCoupon = {
-                id: Date.now(),
-                title: '新會員好禮-30折價券',
-                code: 'WELCOME30',
-                status: 'unused',
-                expire: '2026-12-31'
-            };
-
-            for (let u of allMembers) {
-                if (!u.coupons) u.coupons = [];
-                const alreadyHas = u.coupons.some(c => c.code === 'WELCOME30');
-                if (!alreadyHas) {
-                    u.coupons.push(newCoupon);
-                    await _supabase
-                        .from('members')
-                        .update({ coupons: u.coupons })
-                        .eq('phone', u.phone);
-                }
-            }
-
-            alert('已成功將「新會員好禮-30折價券」發送給所有會員！');
             await loadAdminData();
         }
 
@@ -495,7 +568,7 @@
             const expire = document.getElementById('admin-coupon-expire').value;
 
             if (!title || !code || !expire) {
-                alert('請完整填寫優惠券名稱、代碼與有效期限！');
+                alert('請完整填寫資訊！');
                 return;
             }
 
@@ -516,39 +589,13 @@
                 .update({ coupons: user.coupons })
                 .eq('phone', phone);
 
-            if (error) {
-                alert('優惠券派發失敗，請稍後再試');
-                return;
-            }
+            if (error) { alert('發放失敗'); return; }
 
-            alert('優惠券已成功派發至該會員！');
+            alert('優惠券已成功派發！');
             document.getElementById('admin-coupon-title').value = '';
             document.getElementById('admin-coupon-code').value = '';
             document.getElementById('admin-coupon-expire').value = '';
             await loadAdminData();
-        }
-
-        async function toggleCouponStatus(phone, couponId) {
-            const user = allMembers.find(u => u.phone === phone);
-            if (!user || !user.coupons) return;
-
-            const coupon = user.coupons.find(c => c.id === couponId);
-            if (!coupon) return;
-
-            coupon.status = (coupon.status === 'unused') ? 'used' : 'unused';
-
-            const { error } = await _supabase
-                .from('members')
-                .update({ coupons: user.coupons })
-                .eq('phone', phone);
-
-            if (error) {
-                alert('更新核銷狀態失敗');
-                return;
-            }
-
-            await loadAdminData();
-            viewMemberDetail(phone);
         }
 
         function viewMemberDetail(phone) {
@@ -569,12 +616,14 @@
                         <div class="text-sm font-bold text-indigo-600">NT$ ${u.balance.toLocaleString()}</div>
                     </div>
                     <div>
-                        <div class="text-[10px] text-slate-400">集點卡</div>
-                        <div class="text-sm font-bold text-amber-600">${u.points} / 10 點</div>
+                        <div class="text-[10px] text-slate-400">累積點數</div>
+                        <div class="text-sm font-bold text-amber-600">${u.points || 0} Pts</div>
                     </div>
                     <div>
-                        <div class="text-[10px] text-slate-400">帳號密碼</div>
-                        <div class="text-xs font-mono font-bold text-slate-700">${u.pwd}</div>
+                        <div class="text-[10px] text-slate-400">任務狀態</div>
+                        <div class="text-xs font-bold ${u.task_status === 'completed' ? 'text-emerald-600' : 'text-amber-500'}">
+                            ${u.task_status === 'completed' ? '已完成' : '進行中'}
+                        </div>
                     </div>
                 </div>
 
@@ -614,45 +663,6 @@
                         }).join('')}
                     </div>
                 </div>
-
-                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <h4 class="font-bold text-slate-700 mb-2 flex justify-between items-center">
-                        <span>🎟️ 持有優惠券 (可點擊核銷)</span>
-                        <span class="text-[10px] bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full font-normal">${coupons.length} 張</span>
-                    </h4>
-                    ${coupons.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">無優惠券</p>' : ''}
-                    <div class="space-y-1.5">
-                        ${coupons.map(c => `
-                            <div class="bg-white p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
-                                <div>
-                                    <div class="font-bold text-slate-800">${c.title}</div>
-                                    <div class="text-[9px] text-slate-400">代碼: ${c.code} | 期限: ${c.expire}</div>
-                                </div>
-                                <button onclick="toggleCouponStatus('${u.phone}', ${c.id})" class="px-2.5 py-1 rounded-lg font-bold transition ${c.status === 'unused' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
-                                    ${c.status === 'unused' ? '✓ 點擊核銷' : '↺ 取消核銷'}
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-
-                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <h4 class="font-bold text-slate-700 mb-2">💰 交易明細 (最新 5 筆)</h4>
-                    ${wallets.length === 0 ? '<p class="text-[11px] text-slate-400 text-center py-2">無交易紀錄</p>' : ''}
-                    <div class="space-y-1.5">
-                        ${wallets.slice().reverse().slice(0, 5).map(w => `
-                            <div class="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
-                                <div>
-                                    <div class="font-medium text-slate-700">${w.desc}</div>
-                                    <div class="text-[9px] text-slate-400">${w.time}</div>
-                                </div>
-                                <span class="font-bold ${w.amount >= 0 ? 'text-emerald-600' : 'text-rose-500'}">
-                                    ${w.amount >= 0 ? '+' : ''}${w.amount}
-                                </span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
             `;
 
             document.getElementById('modal-detail-content').innerHTML = contentHtml;
@@ -663,25 +673,6 @@
             document.getElementById('member-detail-modal').classList.add('hidden');
         }
 
-        async function deleteMember(phone, name) {
-            if (!confirm(`確定要刪除會員 「${name} (${phone})」 嗎？此操作無法復原！`)) {
-                return;
-            }
-
-            const { error } = await _supabase
-                .from('members')
-                .delete()
-                .eq('phone', phone);
-
-            if (error) {
-                alert('刪除失敗，請稍後再試');
-                return;
-            }
-
-            alert('已成功刪除該會員帳號！');
-            await loadAdminData();
-        }
-
         async function verifyPassword() {
             const pwd = document.getElementById('admin-pwd').value;
             if (pwd === 'admin888') {
@@ -689,9 +680,7 @@
                 document.getElementById('login-box').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 await loadAdminData();
-            } else {
-                alert('管理密碼錯誤！');
-            }
+            } else { alert('管理密碼錯誤！'); }
         }
 
         function lockAdmin() {
@@ -707,7 +696,6 @@
             const reason = document.getElementById('admin-reason').value.trim() || '官方手動調整';
 
             if (isNaN(amount)) { alert('請輸入有效金額'); return; }
-
             const user = allMembers.find(u => u.phone === phone);
             if (!user) return;
 
@@ -728,7 +716,7 @@
             const user = allMembers.find(u => u.phone === phone);
             if (!user) return;
 
-            user.points = Math.max(0, user.points + val);
+            user.points = (user.points || 0) + val;
             await _supabase.from('members').update({ points: user.points }).eq('phone', phone);
             await loadAdminData();
             alert('點數調整成功！');
