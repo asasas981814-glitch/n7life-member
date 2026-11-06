@@ -160,15 +160,15 @@
                     
                     <div>
                         <label class="text-[11px] text-slate-500">任務標題 / 名稱</label>
-                        <input type="text" id="admin-task-title" placeholder="例如: 社群貼文分享與留言" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none font-bold">
+                        <input type="text" id="admin-task-title" placeholder="例如: 儲值活動" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none font-bold">
                     </div>
                     <div>
                         <label class="text-[11px] text-slate-500">任務詳細內容說明</label>
-                        <input type="text" id="admin-task-desc" placeholder="例如: 請在 LINE 群組公開分享截圖" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
+                        <input type="text" id="admin-task-desc" placeholder="例如: 11/6 儲值金額達到300元" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none">
                     </div>
                     <div>
                         <label class="text-[11px] text-slate-500">完成後獎勵點數 (Pts)</label>
-                        <input type="number" id="admin-task-reward" placeholder="例如: 10" value="10" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none font-bold text-amber-600">
+                        <input type="number" id="admin-task-reward" placeholder="例如: 3" value="3" class="w-full mt-1 px-3 py-2 bg-slate-50 border rounded-xl text-xs outline-none font-bold text-amber-600">
                     </div>
                     
                     <button onclick="adminPublishDailyTask()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-md">🚀 發布新每日任務 (重置全體完成狀態)</button>
@@ -277,32 +277,21 @@
         }
 
         async function loadAdminData() {
-            // 嘗試載入全域任務設定
-            const { data: sysData } = await _supabase.from('members').select('*').eq('phone', 'SYSTEM_CONFIG').maybeSingle();
-            if (sysData && sysData.daily_task) {
-                currentTaskReward = sysData.daily_task.reward || 10;
-                document.getElementById('admin-task-title').value = sysData.daily_task.title || '';
-                document.getElementById('admin-task-desc').value = sysData.daily_task.desc || '';
-                document.getElementById('admin-task-reward').value = currentTaskReward;
-            } else {
-                // 若尚無 SYSTEM_CONFIG 紀錄，先自動初始化建立一筆
-                await _supabase.from('members').upsert([{
-                    phone: 'SYSTEM_CONFIG',
-                    name: '全域系統設定',
-                    pwd: 'none',
-                    balance: 0,
-                    points: 0,
-                    daily_task: { title: '每日登入社群互動', desc: '在 LINE 群組發言打卡', reward: 10 }
-                }], { onConflict: 'phone' });
-            }
-
             const { data, error } = await _supabase.from('members').select('*');
             if (error) {
                 alert('無法載入雲端資料');
                 return;
             }
 
-            allMembers = (data || []).filter(u => u.phone !== 'SYSTEM_CONFIG');
+            allMembers = data || [];
+
+            // 從第一個會員身上取得當前任務設定（若有）
+            if (allMembers.length > 0 && allMembers[0].daily_task) {
+                currentTaskReward = allMembers[0].daily_task.reward || 10;
+                document.getElementById('admin-task-title').value = allMembers[0].daily_task.title || '';
+                document.getElementById('admin-task-desc').value = allMembers[0].daily_task.desc || '';
+                document.getElementById('admin-task-reward').value = currentTaskReward;
+            }
 
             const memberListContainer = document.getElementById('member-list-container');
             document.getElementById('member-count-badge').innerText = `共 ${allMembers.length} 人`;
@@ -432,7 +421,7 @@
             }
         }
 
-        // 🎯 官方發布每日任務 (使用 update 或 upsert 確保成功)
+        // 🎯 官方發布每日任務：直接批次更新至每一位會員的資料中
         async function adminPublishDailyTask() {
             const title = document.getElementById('admin-task-title').value.trim();
             const desc = document.getElementById('admin-task-desc').value.trim();
@@ -451,32 +440,18 @@
                 publishTime: new Date().toLocaleString()
             };
 
-            // 使用 upsert 將設定寫入 SYSTEM_CONFIG
-            const { error: sysErr } = await _supabase
-                .from('members')
-                .upsert([{ 
-                    phone: 'SYSTEM_CONFIG', 
-                    name: '全域系統設定', 
-                    pwd: 'none', 
-                    balance: 0, 
-                    points: 0, 
-                    daily_task: taskConfig 
-                }], { onConflict: 'phone' });
-
-            if (sysErr) {
-                alert('發布任務失敗：' + sysErr.message);
-                return;
-            }
-
-            // 重置全體會員的任務完成狀態
+            // 迴圈更新所有會員的 daily_task 與重置 task_status
             for (let u of allMembers) {
                 await _supabase
                     .from('members')
-                    .update({ task_status: 'pending' })
+                    .update({ 
+                        daily_task: taskConfig,
+                        task_status: 'pending' 
+                    })
                     .eq('phone', u.phone);
             }
 
-            alert(`🎉 成功發布新每日任務：「${title}」！`);
+            alert(`🎉 成功發布新每日任務：「${title}」！已同步至所有會員端。`);
             await loadAdminData();
         }
 
